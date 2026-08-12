@@ -61,8 +61,24 @@ Togli la spunta per vedere il file esattamente com'è.
 - **PDF** — apre la finestra di stampa con la pagina già dimensionata sul diagramma:
   scegli *Salva come PDF*. Resta vettoriale
 
-I diagrammi sono renderizzati con `htmlLabels: false`, quindi l'SVG contiene `<text>`
-e non `<foreignObject>`: è la condizione che permette all'export PNG di funzionare.
+SVG e PDF funzionano sempre. Il PNG no, e vale la pena sapere perché.
+
+I diagrammi vanno renderizzati con `htmlLabels: true`, altrimenti Mermaid non regge
+le etichette multiriga fra backtick — quelle scritte così —
+
+```
+GI4A("`- ricche pensioni ai parlamentari
+- mantenimento del feudalesimo`")
+```
+
+e fallisce con *"splitLineToFitWidth does not support newlines in the line"*. Ma
+`htmlLabels: true` produce `<foreignObject>`, e un SVG che li contiene **non è
+rasterizzabile**: il canvas viene marcato *tainted* e `toBlob()` solleva
+`SecurityError`.
+
+Per il PNG si rifà quindi il render con `htmlLabels: false`, che emette `<text>`. Sui
+diagrammi senza etichette multiriga funziona; sugli altri non è possibile, e il
+pulsante lo dice invece di salvare un file vuoto.
 
 ## Com'è fatto
 
@@ -72,9 +88,22 @@ Nessun build step, nessuna dipendenza a runtime.
 server.mjs                node puro: statico + watch dei file via SSE
 public/index.html
 public/app.js             render, pan/zoom, export
+public/md-labels.js       riscrittura delle label per il markdown
 public/style.css
 public/vendor/mermaid.min.js
+test.mjs                  regressione su una cartella di .mmd
 ```
+
+### Test
+
+```bash
+node test.mjs ~/diagrammi
+```
+
+Rende ogni `.mmd` due volte, grezzo e passato per `prepareMarkdown()`. Usa
+`render()` e non `parse()` di proposito: un diagramma può superare il parser e poi
+fallire in fase di disegno, ed è esattamente così che era passato inosservato il
+problema delle etichette multiriga.
 
 ### Come vengono rilevate le modifiche
 

@@ -1,5 +1,7 @@
 /* mermaid-viewer — anteprima live, zoom infinito, export SVG/PNG/PDF. */
 
+import { prepareMarkdown } from './md-labels.js';
+
 const $ = (s) => document.querySelector(s);
 const stage = $('#stage');
 const canvas = $('#canvas');
@@ -36,59 +38,9 @@ function applyChrome() {
   document.documentElement.dataset.theme = isDark() ? 'dark' : 'light';
 }
 
-/* --------------------------------------------------- markdown nelle celle
- * Mermaid interpreta **grassetto** solo dentro le "markdown string", cioè le
- * label racchiuse tra backtick. I file scritti a mano usano **bold** in label
- * normali, quindi qui le convertiamo prima di dare il sorgente a Mermaid.
- */
+/* --------------------------------------------------- markdown nelle celle */
 
-const MD = /\*\*[^*]+\*\*|__[^_]+__|(?:^|[\s(])\*[^*\s][^*]*\*|`[^`]+`/;
-
-function wrapQuotedLabels(src) {
-  let out = '';
-  let i = 0;
-  const n = src.length;
-
-  while (i < n) {
-    // salta le righe di commento per intero
-    const atLineStart = i === 0 || src[i - 1] === '\n';
-    if (atLineStart) {
-      let j = i;
-      while (j < n && (src[j] === ' ' || src[j] === '\t')) j++;
-      if (src[j] === '%' && src[j + 1] === '%') {
-        const eol = src.indexOf('\n', j);
-        const end = eol === -1 ? n : eol + 1;
-        out += src.slice(i, end);
-        i = end;
-        continue;
-      }
-    }
-
-    if (src[i] === '"') {
-      const close = src.indexOf('"', i + 1);
-      if (close === -1) { out += src.slice(i); break; }
-      const body = src.slice(i + 1, close);
-      const already = body.startsWith('`') && body.endsWith('`');
-      out += already || !MD.test(body) ? `"${body}"` : `"\`${body}\`"`;
-      i = close + 1;
-      continue;
-    }
-
-    out += src[i++];
-  }
-  return out;
-}
-
-/** Label senza virgolette, es. `X(nega il **libero arbitrio**)`. Restiamo
- *  conservativi: niente parentesi, quadre, graffe o virgolette annidate. */
-function wrapBareLabels(src) {
-  return src.replace(
-    /(\[\[|\[\(|\[\/|\[\\|\{\{|\[|\(|\{)([^"`(){}[\]\n]*?)(\]\]|\)\]|\/\]|\\\]|\}\}|\]|\)|\})/g,
-    (m, open, body, close) => (MD.test(body) ? `${open}"\`${body}\`"${close}` : m)
-  );
-}
-
-const prepare = (src) => (state.markdown ? wrapBareLabels(wrapQuotedLabels(src)) : src);
+const prepare = (src) => (state.markdown ? prepareMarkdown(src) : src);
 
 /* ------------------------------------------------------------------ render */
 
@@ -99,11 +51,13 @@ const baseConfig = {
   securityLevel: 'loose',
   suppressErrorRendering: true,
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif',
-  // htmlLabels:false fa emettere <text>/<tspan> invece di <foreignObject>:
-  // il markdown viene comunque reso, e l'SVG resta rasterizzabile su canvas
-  // (i foreignObject rompono l'export PNG).
-  flowchart: { htmlLabels: false, useMaxWidth: false, padding: 18 },
-  htmlLabels: false,
+  // htmlLabels:true è obbligatorio: con false Mermaid non regge le etichette
+  // multiriga fra backtick ("splitLineToFitWidth does not support newlines") e
+  // il diagramma non viene proprio. Il prezzo è che l'SVG contiene
+  // <foreignObject>, che il canvas si rifiuta di rasterizzare: se ne occupa
+  // l'export PNG, rifacendo il render senza.
+  flowchart: { htmlLabels: true, useMaxWidth: false, padding: 18 },
+  htmlLabels: true,
   markdownAutoWrap: true,
 };
 
@@ -340,15 +294,15 @@ stage.addEventListener('drop', async (e) => {
 /* ---------------------------------------------------------------- export */
 
 /** SVG autoconsistente: dimensioni esplicite e sfondo opaco. */
-function exportSvgString() {
-  const el = canvas.querySelector('svg');
-  if (!el) return null;
+function selfContained(el) {
+  const vb = el.viewBox.baseVal;
+  const w = vb.width || el.clientWidth;
+  const h = vb.height || el.clientHeight;
   const clone = el.cloneNode(true);
-  const s = svgSize();
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
-  clone.setAttribute('width', s.w);
-  clone.setAttribute('height', s.h);
+  clone.setAttribute('width', w);
+  clone.setAttribute('height', h);
 
   const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
   bg.setAttribute('width', '100%');
@@ -356,7 +310,47 @@ function exportSvgString() {
   bg.setAttribute('fill', isDark() ? '#14171c' : '#ffffff');
   clone.insertBefore(bg, clone.firstChild);
 
-  return { text: new XMLSerializer().serializeToString(clone), ...s };
+  return { text: new XMLSerializer().serializeToString(clone), w, h };
+}
+
+function exportSvgString() {
+  const el = canvas.querySelector('svg');
+  return el ? selfContained(el) : null;
+}
+
+/** Il canvas rifiuta di rasterizzare un SVG che contiene <foreignObject>
+ *  (SecurityError: tainted). Per il PNG si rifà quindi il render con
+ *  htmlLabels:false, che emette <text>. Non sempre riesce: i diagrammi con
+ *  etichette multiriga non sono rappresentabili in quella modalità. */
+async function rasterSource() {
+  const cfg = {
+    ...baseConfig,
+    theme: mermaidTheme(),
+    flowchart: { ...baseConfig.flowchart, htmlLabels: false },
+    htmlLabels: false,
+  };
+  for (const src of [prepare(state.source), state.source]) {
+    const id = `r${++state.seq}`;
+    try {
+      mermaid.initialize(cfg);
+      const { svg } = await mermaid.render(id, src);
+      if (/<foreignObject/.test(svg)) continue;
+      const host = document.createElement('div');
+      host.style.cssText = 'position:fixed;left:-99999px;top:0';
+      host.innerHTML = svg;
+      document.body.appendChild(host);
+      try {
+        return selfContained(host.querySelector('svg'));
+      } finally {
+        host.remove();
+      }
+    } catch {
+      /* si prova la variante successiva */
+    } finally {
+      document.getElementById(id)?.remove();
+    }
+  }
+  return null;
 }
 
 function download(blob, ext) {
@@ -379,8 +373,13 @@ function exportSVG() {
 const CANVAS_MAX = 16384;
 
 async function exportPNG(scale) {
-  const out = exportSvgString();
-  if (!out) return;
+  if (!canvas.querySelector('svg')) return;
+  toast('Preparo il PNG…');
+  const out = await rasterSource();
+  if (!out) {
+    toast('PNG non disponibile per questo diagramma: usa SVG o PDF');
+    return;
+  }
 
   const limit = Math.min(CANVAS_MAX / out.w, CANVAS_MAX / out.h);
   if (scale > limit) {
