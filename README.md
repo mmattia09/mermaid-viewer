@@ -76,9 +76,26 @@ public/style.css
 public/vendor/mermaid.min.js
 ```
 
-Il watch combina `fs.watch` e un poll di sicurezza ogni secondo, deduplicando sul
-`mtime`: da solo `fs.watch` perde gli aggiornamenti degli editor che salvano con
-rename+replace.
+### Come vengono rilevate le modifiche
+
+Il watch confronta il **contenuto** del file ogni 500 ms; `fs.watch` è solo un
+acceleratore sui dischi locali. Sembra grossolano, ma è l'unica cosa che regge
+tutti e tre i casi:
+
+- **salvataggio atomico** — VS Code scrive un file temporaneo e lo rinomina sopra
+  l'originale, quindi `fs.watch` resta agganciato al vecchio inode e ammutolisce;
+- **share SMB** (`/Volumes/share` sta su TrueNAS) — `fs.watch` non notifica
+  proprio nulla, e il client SMB di macOS cachea gli attributi: `stat()` continua
+  a restituire lo **stesso `mtime`** anche dopo una riscrittura. Il contenuto
+  letto è invece sempre aggiornato, quindi confrontare i byte funziona dove
+  confrontare l'`mtime` fallisce in silenzio;
+- **disco locale** — qui va tutto, e `fs.watch` rende la risposta immediata.
+
+### Porta occupata
+
+La porta di default è la 4321. Se è già occupata da un'altra istanza del
+visualizzatore, quella nuova non parte: passa il file a quella già attiva aprendo
+una scheda. Se invece la occupa un programma estraneo, prova le porte successive.
 
 Se apri un file col pulsante **Apri…** invece che da riga di comando, il live reload
 passa dal File System Access API (Chrome, Edge). Su Safari e Firefox in quel caso il
