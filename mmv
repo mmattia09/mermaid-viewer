@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# mmv — apre un file .mmd nel visualizzatore
+exec node "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/server.mjs" "$@"

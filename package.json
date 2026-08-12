@@ -1,0 +1,13 @@
+{
+  "name": "mermaid-viewer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Anteprima Mermaid live con zoom infinito ed export SVG/PNG/PDF",
+  "type": "module",
+  "bin": { "mmv": "./mmv" },
+  "scripts": {
+    "start": "node server.mjs",
+    "vendor": "cp node_modules/mermaid/dist/mermaid.min.js public/vendor/"
+  },
+  "devDependencies": { "mermaid": "^11.0.0" }
+}

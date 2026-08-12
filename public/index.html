@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mermaid-viewer</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header class="bar">
+  <div class="group">
+    <button id="open" class="btn" title="Apri un file (⌘O)">Apri…</button>
+    <span id="file" class="file" title="nessun file">nessun file</span>
+    <span id="live" class="dot" title="stato aggiornamento live"></span>
+  </div>
+
+  <div class="group center">
+    <button class="btn icon" data-zoom="out" title="Zoom indietro (−)">−</button>
+    <button id="zoomLabel" class="btn wide" title="Ripristina zoom 100% (0)">100%</button>
+    <button class="btn icon" data-zoom="in" title="Zoom avanti (+)">+</button>
+    <button class="btn" id="fit" title="Adatta alla finestra (F)">Adatta</button>
+  </div>
+
+  <div class="group right">
+    <label class="chk" title="Interpreta **grassetto**, *corsivo* e `codice` dentro le celle">
+      <input type="checkbox" id="md" checked> Markdown
+    </label>
+    <select id="theme" class="btn" title="Tema del diagramma">
+      <option value="auto">Tema: auto</option>
+      <option value="default">Chiaro</option>
+      <option value="dark">Scuro</option>
+      <option value="neutral">Neutro</option>
+      <option value="forest">Forest</option>
+    </select>
+    <div class="menu">
+      <button class="btn" id="exportBtn" title="Esporta">Esporta ▾</button>
+      <div class="dropdown" id="exportMenu" hidden>
+        <button data-export="svg">SVG</button>
+        <button data-export="png@1">PNG 1×</button>
+        <button data-export="png@2">PNG 2×</button>
+        <button data-export="png@4">PNG 4×</button>
+        <button data-export="pdf">PDF</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main id="stage" class="stage" tabindex="0">
+  <div id="canvas" class="canvas"></div>
+  <div id="drop" class="drop">Trascina qui un file <code>.mmd</code> o <code>.mermaid</code></div>
+</main>
+
+<div id="err" class="err" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="/vendor/mermaid.min.js"></script>
+<script src="/app.js" type="module"></script>
+</body>
+</html>
