@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-# mmv — apre un file .mmd nel visualizzatore
-exec node "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/server.mjs" "$@"
+# mmv — visualizzatore Mermaid; senza argomenti si sceglie il file dal browser
+exec bun "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/server.ts" "$@"

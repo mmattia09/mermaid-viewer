@@ -178,7 +178,8 @@ stage.addEventListener('dblclick', () => fit());
 addEventListener('keydown', (e) => {
   if (e.target.matches('input, select, textarea')) return;
   if ((e.metaKey || e.ctrlKey) && e.key === 'o') { e.preventDefault(); openPicker(); return; }
-  if (e.metaKey || e.ctrlKey) return;
+  if (e.key === 'Escape') { picker.hidden = true; return; }
+  if (!picker.hidden || e.metaKey || e.ctrlKey) return;
   const k = e.key;
   if (k === '+' || k === '=') centerZoom(1.2);
   else if (k === '-' || k === '_') centerZoom(1 / 1.2);
@@ -219,17 +220,33 @@ function setLive(on, pulse = false) {
   }
 }
 
-/** Modalità 1: il server conosce il path e ci manda gli aggiornamenti via SSE. */
+/** Modalità 1: il server conosce il path e ci manda gli aggiornamenti via SSE.
+ *  È la strada buona — funziona su ogni browser e su share di rete. */
+let stream = null;
+
 function watchServer(path) {
-  const es = new EventSource(`/api/watch?path=${encodeURIComponent(path)}`);
-  es.onopen = () => setLive(true);
-  es.onerror = () => setLive(false);
-  es.onmessage = (ev) => {
+  stream?.close();
+  stream = new EventSource(`/api/watch?path=${encodeURIComponent(path)}`);
+  stream.onopen = () => setLive(true);
+  stream.onerror = () => setLive(false);
+  stream.onmessage = (ev) => {
     const { text } = JSON.parse(ev.data);
     if (text === state.source) return;
     setSource(text);
     setLive(true, true);
   };
+}
+
+/** Apre un file per path assoluto: è ciò che fanno selettore, recenti e URL. */
+async function openPath(path) {
+  const r = await fetch(`/api/open?path=${encodeURIComponent(path)}`);
+  const d = await r.json();
+  if (d.error) throw new Error(d.error);
+  setSource(d.text, d.name, { reset: true });
+  watchServer(d.path);
+  remember(d.path);
+  history.replaceState(null, '', `/?path=${encodeURIComponent(d.path)}`);
+  localStorage.setItem('mv-dir', d.path.replace(/\/[^/]*$/, ''));
 }
 
 /** Modalità 2: handle del File System Access API, con polling su lastModified. */
@@ -250,27 +267,100 @@ function watchHandle(handle) {
   setInterval(tick, 700);
 }
 
-async function openPicker() {
-  if (window.showOpenFilePicker) {
-    try {
-      const [h] = await window.showOpenFilePicker({
-        types: [{ description: 'Mermaid', accept: { 'text/plain': ['.mmd', '.mermaid', '.md', '.txt'] } }],
-      });
-      const f = await h.getFile();
-      setSource(await f.text(), f.name, { reset: true });
-      watchHandle(h);
-    } catch { /* annullato dall'utente */ }
-    return;
-  }
-  const inp = document.createElement('input');
-  inp.type = 'file';
-  inp.accept = '.mmd,.mermaid,.md,.txt';
-  inp.onchange = async () => {
-    const f = inp.files[0];
-    if (f) { setSource(await f.text(), f.name, { reset: true }); setLive(false); }
-  };
-  inp.click();
+/* -------------------------------------------------------- selettore file */
+
+const picker = $('#picker');
+const listing = $('#listing');
+const crumbs = $('#crumbs');
+
+const recents = () => {
+  try { return JSON.parse(localStorage.getItem('mv-recents') || '[]'); } catch { return []; }
+};
+
+function remember(path) {
+  const list = [path, ...recents().filter((p) => p !== path)].slice(0, 6);
+  localStorage.setItem('mv-recents', JSON.stringify(list));
+  drawRecents();
 }
+
+function drawRecents() {
+  const list = recents();
+  const box = $('#recents');
+  box.replaceChildren();
+  if (!list.length) return;
+  box.append(Object.assign(document.createElement('b'), { textContent: 'Recenti' }));
+  for (const p of list) {
+    const b = document.createElement('button');
+    b.textContent = p.split('/').pop();
+    b.title = p;
+    b.onclick = () => choose(p);
+    box.append(b);
+  }
+}
+
+async function choose(path) {
+  try {
+    await openPath(path);
+    picker.hidden = true;
+  } catch (e) {
+    errBox.hidden = false;
+    errBox.textContent = `Impossibile aprire il file: ${e.message}`;
+  }
+}
+
+async function loadDir(dir) {
+  const r = await fetch(`/api/browse?path=${encodeURIComponent(dir)}`);
+  const d = await r.json();
+  if (d.error) { listing.innerHTML = `<li class="empty">${d.error}</li>`; return; }
+
+  localStorage.setItem('mv-dir', d.path);
+
+  // briciole: le radici consentite più il percorso relativo alla radice attiva
+  crumbs.replaceChildren();
+  const root = d.roots.find((x) => d.path === x || d.path.startsWith(x + '/')) ?? '/';
+  const rest = d.path.slice(root.length).split('/').filter(Boolean);
+  const mk = (label, target) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.onclick = () => loadDir(target);
+    return b;
+  };
+  crumbs.append(mk(root === '/' ? '/' : root.split('/').pop() || root, root));
+  let acc = root;
+  for (const part of rest) {
+    acc = `${acc}/${part}`;
+    crumbs.append(Object.assign(document.createElement('span'), { textContent: '›' }), mk(part, acc));
+  }
+
+  listing.replaceChildren();
+  const row = (icon, label, onclick) => {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.innerHTML = `<span class="ico">${icon}</span>`;
+    b.append(Object.assign(document.createElement('span'), { textContent: label }));
+    b.onclick = onclick;
+    li.append(b);
+    return li;
+  };
+
+  if (d.parent) listing.append(row('↰', '..', () => loadDir(d.parent)));
+  for (const name of d.dirs) listing.append(row('📁', name, () => loadDir(`${d.path}/${name}`)));
+  for (const name of d.files) listing.append(row('◈', name, () => choose(`${d.path}/${name}`)));
+
+  if (!d.dirs.length && !d.files.length) {
+    listing.append(Object.assign(document.createElement('li'),
+      { className: 'empty', textContent: 'nessun diagramma qui' }));
+  }
+}
+
+function openPicker() {
+  picker.hidden = false;
+  drawRecents();
+  loadDir(localStorage.getItem('mv-dir') || '');   // vuoto = prima radice
+}
+
+$('#pickerClose').onclick = () => { picker.hidden = true; };
+picker.onclick = (e) => { if (e.target === picker) picker.hidden = true; };
 
 stage.addEventListener('dragover', (e) => { e.preventDefault(); stage.classList.add('dragover'); });
 stage.addEventListener('dragleave', () => stage.classList.remove('dragover'));
@@ -474,12 +564,12 @@ applyView();
 
 const path = new URLSearchParams(location.search).get('path');
 if (path) {
-  fetch(`/api/open?path=${encodeURIComponent(path)}`)
-    .then((r) => r.json())
-    .then((d) => {
-      if (d.error) throw new Error(d.error);
-      setSource(d.text, d.name, { reset: true });
-      watchServer(d.path);
-    })
-    .catch((e) => { errBox.hidden = false; errBox.textContent = `Impossibile aprire il file: ${e.message}`; });
+  openPath(path).catch((e) => {
+    errBox.hidden = false;
+    errBox.textContent = `Impossibile aprire il file: ${e.message}`;
+    openPicker();
+  });
+} else {
+  // avviato senza argomenti: si sceglie da qui
+  openPicker();
 }

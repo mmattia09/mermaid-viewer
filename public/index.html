@@ -10,7 +10,7 @@
 
 <header class="bar">
   <div class="group">
-    <button id="open" class="btn" title="Apri un file (⌘O)">Apri…</button>
+    <button id="open" class="btn" title="Sfoglia i file (⌘O)">Apri…</button>
     <span id="file" class="file" title="nessun file">nessun file</span>
     <span id="live" class="dot" title="stato aggiornamento live"></span>
   </div>
@@ -48,8 +48,23 @@
 
 <main id="stage" class="stage" tabindex="0">
   <div id="canvas" class="canvas"></div>
-  <div id="drop" class="drop">Trascina qui un file <code>.mmd</code> o <code>.mermaid</code></div>
+  <div id="drop" class="drop">
+    <p>Apri un file per iniziare</p>
+    <p class="small">premi <kbd>⌘O</kbd> · oppure trascina qui un <code>.mmd</code></p>
+  </div>
 </main>
+
+<div id="picker" class="picker" hidden>
+  <div class="sheet">
+    <header>
+      <strong>Apri un diagramma</strong>
+      <button class="btn icon" id="pickerClose" title="Chiudi (esc)">×</button>
+    </header>
+    <nav id="crumbs" class="crumbs"></nav>
+    <ul id="listing" class="listing"></ul>
+    <footer id="recents" class="recents"></footer>
+  </div>
+</div>
 
 <div id="err" class="err" hidden></div>
 <div id="toast" class="toast" hidden></div>

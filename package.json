@@ -8,9 +8,9 @@
     "mmv": "./mmv"
   },
   "scripts": {
-    "start": "node server.mjs",
+    "start": "bun server.ts",
     "vendor": "cp node_modules/mermaid/dist/mermaid.min.js public/vendor/",
-    "test": "node test.mjs"
+    "test": "bun test.mjs"
   },
   "devDependencies": {
     "jsdom": "^29.1.1",
