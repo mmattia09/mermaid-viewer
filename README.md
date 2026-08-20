@@ -1,116 +1,118 @@
 # mermaid-viewer
 
-[![Licenza: MIT](https://img.shields.io/badge/licenza-MIT-blue?style=for-the-badge)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 [![Bun](https://img.shields.io/badge/runtime-bun-f9f1e1?style=for-the-badge)](https://bun.sh)
-[![Zero dipendenze a runtime](https://img.shields.io/badge/dipendenze%20runtime-0-34c759?style=for-the-badge)](#comè-fatto)
+[![Zero runtime dependencies](https://img.shields.io/badge/runtime%20deps-0-34c759?style=for-the-badge)](#how-its-built)
 
-Anteprima live di diagrammi [Mermaid](https://mermaid.js.org), in stile estensione
-VS Code ma nel browser: apri un `.mmd` da riga di comando e la pagina si ridisegna a
-ogni salvataggio **mantenendo zoom e posizione**, così puoi lavorare su un dettaglio
-senza perdere l'inquadratura. Zoom senza limiti, markdown reso dentro le celle,
-export in SVG, PNG e PDF.
+A live preview for [Mermaid](https://mermaid.js.org) diagrams — the VS Code extension
+experience, in the browser: open a `.mmd` from the command line and the page redraws
+on every save **keeping zoom and position**, so you can work on one detail without
+losing your framing. Unlimited zoom, markdown rendered inside the cells, export to
+SVG, PNG and PDF.
 
-Nato per rileggere mappe concettuali scritte a mano, funziona con qualsiasi file
-`.mmd` o `.mermaid`. Niente build, niente account, niente rete: un server locale che
-serve una pagina statica e guarda un file.
+Born to reread hand-written concept maps, it works with any `.mmd` or `.mermaid`
+file. No build step, no account, no network: a local server that serves a static page
+and watches a file.
 
 ```bash
-mmv "percorso/del/file.mmd"
+mmv "path/to/file.mmd"
 ```
 
-## Funzionalità
+> The app's interface is in Italian.
 
-- **Ricarica live che non perde il punto** — a ogni salvataggio il diagramma viene
-  rifatto, ma zoom e posizione restano quelli di prima. Un pallino accanto al nome
-  del file dice se la connessione è viva.
-- **Pan e zoom senza limiti** — trascinamento, rotella, pinch, zoom sul puntatore,
-  *adatta alla finestra*, ritorno al 100%.
-- **Markdown nelle celle** — `**grassetto**`, `*corsivo*` e `` `codice` `` resi
-  anche nelle label scritte senza backtick, riscrivendo il sorgente al volo senza
-  toccare il file. Disattivabile con una spunta.
-- **Export SVG, PNG 1×/2×/4× e PDF** — vettoriale dove conta, con i limiti del PNG
-  dichiarati invece di produrre file vuoti (vedi [Come funziona](#come-funziona)).
-- **Cinque temi** — auto (segue il sistema), chiaro, scuro, neutro, forest. La
-  scelta resta.
-- **Selettore di file integrato** — sfoglia le cartelle dal browser (⌘O), con i
-  file recenti a portata di clic, oppure trascina un `.mmd` nella finestra.
-- **Una sola istanza** — se la porta è già occupata dal visualizzatore, il file
-  viene passato a quella attiva in una nuova scheda invece di far fallire il
-  comando.
-- **Nessuna dipendenza a runtime** — Mermaid è incluso nel repository, il resto è
-  JavaScript nativo. Non esce una richiesta di rete.
+## Features
 
-## Come funziona
+- **Live reload that keeps your place** — every save re-renders the diagram, but zoom
+  and position stay where they were. A dot next to the filename shows whether the
+  connection is alive.
+- **Unlimited pan and zoom** — drag, wheel, pinch, zoom at the pointer, *fit to
+  window*, back to 100%.
+- **Markdown inside cells** — `**bold**`, `*italic*` and `` `code` `` rendered even in
+  labels written without backticks, by rewriting the source on the fly without
+  touching the file. Toggleable with a checkbox.
+- **Export to SVG, PNG 1×/2×/4× and PDF** — vector where it matters, with the PNG
+  limits stated up front instead of saving empty files (see [How it
+  works](#how-it-works)).
+- **Five themes** — auto (follows the system), light, dark, neutral, forest. The
+  choice sticks.
+- **Built-in file picker** — browse folders from the browser (⌘O), with recent files
+  one click away, or drag a `.mmd` into the window.
+- **A single instance** — if the port is already taken by the viewer, the file is
+  handed to the running instance in a new tab instead of failing the command.
+- **No runtime dependencies** — Mermaid ships inside the repository, everything else
+  is plain JavaScript. Not a single network request goes out.
 
-Il comando `mmv` avvia un server locale su `127.0.0.1`, apre il browser sulla pagina
-e resta in ascolto. Il file viene servito via HTTP e tenuto sotto osservazione con
-un canale [SSE](https://developer.mozilla.org/docs/Web/API/Server-sent_events): a
-ogni modifica il testo nuovo arriva alla pagina, che rifà solo il render.
+## How it works
 
-### Rilevamento delle modifiche
+`mmv` starts a local server on `127.0.0.1`, opens the browser on the page and keeps
+listening. The file is served over HTTP and watched through an
+[SSE](https://developer.mozilla.org/docs/Web/API/Server-sent_events) channel: on every
+change the new text reaches the page, which re-renders and nothing else.
 
-Il watch confronta il **contenuto** del file ogni 500 ms; `fs.watch` è solo un
-acceleratore sui dischi locali. Sembra grossolano, ma è l'unica cosa che regge tutti
-e tre i casi:
+### How changes are detected
 
-- **salvataggio atomico** — molti editor scrivono un file temporaneo e lo rinominano
-  sopra l'originale, quindi `fs.watch` resta agganciato al vecchio inode e ammutolisce;
-- **share di rete (SMB)** — `fs.watch` non notifica nulla, e il client SMB di macOS
-  cachea gli attributi: `stat()` continua a restituire lo **stesso `mtime`** anche
-  dopo una riscrittura. Il contenuto letto è invece sempre aggiornato, quindi
-  confrontare i byte funziona dove confrontare l'`mtime` fallisce in silenzio;
-- **disco locale** — qui va tutto, e `fs.watch` rende la risposta immediata.
+The watcher compares the file's **contents** every 500 ms; `fs.watch` is only an
+accelerator on local disks. It looks crude, but it is the only thing that survives all
+three cases:
 
-### Markdown nelle celle
+- **atomic saves** — many editors write a temporary file and rename it over the
+  original, so `fs.watch` stays attached to the old inode and goes silent;
+- **network shares (SMB)** — `fs.watch` reports nothing at all, and the macOS SMB
+  client caches attributes: `stat()` keeps returning the **same `mtime`** even after a
+  rewrite. The bytes read back are always current, though, so comparing contents works
+  where comparing `mtime` fails silently;
+- **local disk** — everything works here, and `fs.watch` makes the response instant.
 
-Mermaid interpreta il markdown **solo** dentro le label racchiuse tra backtick, e le
-mappe scritte a mano di solito non lo fanno:
+### Markdown inside cells
 
-```
-A("**Controriforma**: reazione della Chiesa")
-```
-
-Con l'opzione **Markdown** attiva (default) il sorgente viene riscritto prima di
-passarlo a Mermaid, quindi il grassetto si vede senza modificare i file. Le righe di
-commento `%%` e le label già in formato markdown vengono lasciate stare.
-
-### Perché il PNG a volte non si può fare
-
-I diagrammi vengono resi con `htmlLabels: true`, altrimenti Mermaid non regge le
-etichette multiriga fra backtick e fallisce con *"splitLineToFitWidth does not
-support newlines in the line"*. Ma `htmlLabels: true` produce `<foreignObject>`, e un
-SVG che li contiene **non è rasterizzabile**: il canvas viene marcato *tainted* e
-`toBlob()` solleva `SecurityError`.
-
-Per il PNG si rifà quindi il render con `htmlLabels: false`, che emette `<text>`. Sui
-diagrammi senza etichette multiriga funziona; sugli altri no, e il pulsante lo dice
-invece di salvare un file vuoto. SVG e PDF funzionano sempre. Oltre ~16384 px per
-lato il fattore di scala del PNG viene ridotto in automatico, perché Chrome
-produrrebbe un'immagine vuota.
-
-### Com'è fatto
-
-Nessun passo di build: quello che c'è nel repository è quello che gira.
+Mermaid only interprets markdown inside labels wrapped in backticks, and hand-written
+maps usually don't do that:
 
 ```
-mmv                       lanciatore da riga di comando
-server.ts                 server Bun: statico, sfoglia i file, watch via SSE
+A("**Counter-Reformation**: the Church reacts")
+```
+
+With the **Markdown** option on (the default) the source is rewritten before it
+reaches Mermaid, so the bold shows up without editing your files. Comment lines
+starting with `%%` and labels already in markdown form are left alone.
+
+### Why PNG sometimes isn't possible
+
+Diagrams are rendered with `htmlLabels: true`, otherwise Mermaid can't handle
+multi-line labels between backticks and fails with *"splitLineToFitWidth does not
+support newlines in the line"*. But `htmlLabels: true` emits `<foreignObject>`, and an
+SVG containing those **cannot be rasterised**: the canvas is marked *tainted* and
+`toBlob()` throws a `SecurityError`.
+
+So for PNG the diagram is rendered again with `htmlLabels: false`, which emits
+`<text>`. On diagrams without multi-line labels that works; on the others it doesn't,
+and the button says so instead of saving an empty file. SVG and PDF always work. Past
+roughly 16384 px per side the PNG scale factor is lowered automatically, because
+Chrome would produce a blank image.
+
+### How it's built
+
+No build step: what's in the repository is what runs.
+
+```
+mmv                       command-line launcher
+server.ts                 Bun server: static files, folder browsing, SSE watch
 public/index.html
-public/app.js             render, pan/zoom, export
-public/md-labels.js       riscrittura delle label per il markdown
+public/app.js             rendering, pan/zoom, export
+public/md-labels.js       label rewriting for markdown
 public/style.css
 public/vendor/mermaid.min.js
-test.mjs                  regressione su una cartella di .mmd
+test.mjs                  regression run over a folder of .mmd files
 ```
 
-## Installazione
+## Installation
 
-### Requisiti
+### Requirements
 
-[Bun](https://bun.sh) 1.1 o superiore. Il lanciatore `mmv` è uno script bash, quindi
-serve una shell POSIX: macOS e Linux vanno, su Windows serve WSL o Git Bash.
-L'apertura automatica del browser usa il comando `open` di macOS; altrove il server
-parte comunque e basta aprire l'indirizzo stampato a terminale.
+[Bun](https://bun.sh) 1.1 or newer. The `mmv` launcher is a bash script, so it needs a
+POSIX shell: macOS and Linux are fine, Windows needs WSL or Git Bash. Opening the
+browser automatically uses the macOS `open` command; elsewhere the server still starts
+and you just open the address it prints.
 
 ```bash
 git clone https://github.com/mmattia09/mermaid-viewer.git
@@ -118,8 +120,8 @@ cd mermaid-viewer
 chmod +x mmv
 ```
 
-Non serve installare nulla per usarlo: `bun install` scarica solo le dipendenze di
-sviluppo, che servono ai test e ad aggiornare Mermaid.
+Nothing needs installing to use it: `bun install` only pulls the dev dependencies,
+which are there for the tests and for updating Mermaid.
 
 ### Alias
 
@@ -127,87 +129,98 @@ sviluppo, che servono ai test e ad aggiornare Mermaid.
 alias mmv='~/mermaid-viewer/mmv'
 ```
 
-Da mettere in `~/.zshrc` o `~/.bashrc`, con il percorso in cui hai clonato il
-repository. Poi:
+Put it in `~/.zshrc` or `~/.bashrc`, with the path where you cloned the repository.
+Then:
 
 ```bash
-mmv diagramma.mmd
+mmv diagram.mmd
 ```
 
-Senza argomenti il visualizzatore parte a vuoto: usa **Apri…** oppure trascina un
-file nella finestra.
+With no arguments the viewer starts empty: use **Apri…** or drag a file into the
+window.
 
-### Aggiornare Mermaid
+### Updating Mermaid
 
 ```bash
 bun install
 bun run vendor
 ```
 
-## Configurazione
+## Configuration
 
-Non c'è un file di configurazione: tutto passa da variabili d'ambiente o dai
-controlli nella barra.
+There is no config file: everything comes from environment variables or from the
+controls in the toolbar.
 
-| Variabile | Default | Cosa fa |
+| Variable | Default | What it does |
 |---|---|---|
-| `PORT` | `4321` | Porta di partenza. Se occupata da un'altra istanza il file le viene passato; se la occupa un programma estraneo si provano fino a 12 porte successive |
-| `NO_OPEN` | — | Con `NO_OPEN=1` il browser non viene aperto: il server stampa solo l'indirizzo |
+| `PORT` | `4321` | Starting port. If it's taken by another instance the file is handed over to it; if an unrelated program holds it, up to 12 following ports are tried |
+| `NO_OPEN` | — | With `NO_OPEN=1` the browser is not opened: the server only prints the address |
 
-Il server ascolta solo su `127.0.0.1` e può sfogliare unicamente tre radici: la home
-dell'utente, `/Volumes` e la cartella da cui è stato lanciato. Tutto il resto del
-filesystem è fuori portata. Le estensioni riconosciute sono `.mmd` e `.mermaid`.
+Set them for a single run:
 
-Tema scelto, cartella dell'ultima apertura e file recenti restano nel `localStorage`
-del browser.
+```bash
+PORT=5000 NO_OPEN=1 mmv diagram.mmd
+```
 
-### Comandi
+or for good, next to the alias in `~/.zshrc`:
+
+```bash
+alias mmv='PORT=5000 ~/mermaid-viewer/mmv'
+```
+
+The server listens on `127.0.0.1` only and can browse just three roots: the user's
+home, `/Volumes` and the folder it was launched from. The rest of the filesystem is
+out of reach. Recognised extensions are `.mmd` and `.mermaid`.
+
+The chosen theme, the last folder opened and the recent files live in the browser's
+`localStorage`.
+
+### Controls
 
 | | |
 |---|---|
-| trascina | sposta il diagramma |
-| rotella / due dita | sposta |
-| ⌘ o ctrl + rotella, pinch | zoom sul puntatore |
-| doppio clic, `F` | adatta alla finestra |
+| drag | move the diagram |
+| wheel / two fingers | move |
+| ⌘ or ctrl + wheel, pinch | zoom at the pointer |
+| double click, `F` | fit to window |
 | `+` `−` | zoom |
-| `0` | torna al 100% |
-| ⌘O | apri un file |
+| `0` | back to 100% |
+| ⌘O | open a file |
 
-Il pulsante con la percentuale riporta al 100%.
+The percentage button takes you back to 100%.
 
-## Test
+## Tests
 
 ```bash
 bun install
-bun test.mjs percorso/della/cartella
+bun test.mjs path/to/folder
 ```
 
-Rende ogni `.mmd` trovato due volte, grezzo e passato per `prepareMarkdown()`. Usa
-`render()` e non `parse()` di proposito: un diagramma può superare il parser e poi
-fallire in fase di disegno, ed è esattamente così che era passato inosservato il
-problema delle etichette multiriga.
+Every `.mmd` found is rendered twice, raw and after `prepareMarkdown()`. It uses
+`render()` and not `parse()` on purpose: a diagram can pass the parser and then fail
+while being drawn, and that is exactly how the multi-line label problem went unnoticed.
 
-## Contribuire
+## Contributing
 
-Segnalazioni e proposte → [GitHub Issues](https://github.com/mmattia09/mermaid-viewer/issues).
-Per una pull request:
+Bug reports and ideas → [GitHub Issues](https://github.com/mmattia09/mermaid-viewer/issues).
+For a pull request:
 
-1. Apri prima una issue se la modifica è grossa, così non lavori a vuoto.
-2. Un ramo per argomento, commit piccoli e messaggi in italiano all'imperativo, come
-   quelli già presenti.
-3. Prima di aprire la PR fai girare i test su una cartella di diagrammi veri e
-   controlla che l'export SVG, PNG e PDF funzioni ancora.
-4. Niente dipendenze a runtime e niente passi di build: se una funzione richiede un
-   pacchetto in più, parliamone nella issue.
+1. Open an issue first if the change is large, so you don't work for nothing.
+2. One branch per topic, small commits, Italian imperative commit messages like the
+   ones already there.
+3. Before opening the PR, run the tests against a folder of real diagrams and check
+   that SVG, PNG and PDF export still work.
+4. No runtime dependencies and no build step: if a feature needs an extra package,
+   let's discuss it in the issue.
 
-Lo stile del codice è quello dei file esistenti — moduli ES, nessun framework,
-commenti solo dove il *perché* non si legge dal codice.
+The code style is the one in the existing files — ES modules, no framework, comments
+only where the *why* isn't obvious from the code.
 
-## Autori
+## Authors
 
-Di [@mmattia09](https://github.com/mmattia09). Sviluppato con l'aiuto di
+By [@mmattia09](https://github.com/mmattia09). Built with the help of
 [Claude Code](https://claude.com/claude-code).
 
-## Licenza
+## License
 
 [MIT](LICENSE).
