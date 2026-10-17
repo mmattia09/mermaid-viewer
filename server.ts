@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // mermaid-viewer — server Bun: statico, sfoglia i file, watch via SSE.
-import { readdir, readFile, stat } from 'node:fs/promises';
-import { watch } from 'node:fs';
+import { readdir, readFile, stat, realpath } from 'node:fs/promises';
+import { watchFile } from './watch-file.ts';
 import { basename, dirname, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 
@@ -21,62 +21,11 @@ const isDiagram = (n: string) => EXTS.some((e) => n.toLowerCase().endsWith(e));
 const json = (data: unknown, status = 200) =>
   Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 
-/* ------------------------------------------------------------------ watch
- * Il confronto è sul contenuto e non sull'mtime: su una share SMB il client
- * macOS cachea gli attributi e stat() continua a restituire lo stesso mtime
- * anche dopo una riscrittura, mentre i byte letti sono sempre aggiornati.
- * fs.watch resta solo come accelleratore sui dischi locali, dove reagisce
- * subito; da solo non basterebbe perché gli editor salvano con temp+rename.
- */
-const POLL_MS = 500;
-
-function watchFile(abs: string, onChange: (text: string) => void) {
-  let lastText: string | null = null;
-  let timer: ReturnType<typeof setTimeout> | null = null;
-
-  const check = async () => {
-    try {
-      const text = await readFile(abs, 'utf8');
-      if (text !== lastText) {
-        lastText = text;
-        onChange(text);
-      }
-    } catch {
-      /* assente per un istante durante un salvataggio atomico */
-    }
-  };
-
-  const debounced = () => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(check, 40);
-  };
-
-  let w: ReturnType<typeof watch> | null = null;
-  const arm = () => {
-    try {
-      w?.close();
-      w = watch(abs, debounced);
-      w.on('error', () => setTimeout(arm, 300));
-    } catch {
-      setTimeout(arm, 300);
-    }
-  };
-  arm();
-
-  const poll = setInterval(check, POLL_MS);
-  check();
-
-  return () => {
-    clearInterval(poll);
-    if (timer) clearTimeout(timer);
-    try { w?.close(); } catch { /* già chiuso */ }
-  };
-}
-
 /* ---------------------------------------------------------------- handlers */
 
 async function openFile(p: string) {
-  const abs = resolve(p);
+  const abs = await realpath(resolve(p));
+  if (!inRoots(abs) || !isDiagram(abs)) throw new Error('file non consentito');
   const st = await stat(abs);
   if (!st.isFile()) throw new Error('non è un file');
   return { path: abs, name: basename(abs), text: await readFile(abs, 'utf8') };
@@ -84,7 +33,7 @@ async function openFile(p: string) {
 
 /** Elenco di una cartella: sottocartelle + soli diagrammi, per il selettore. */
 async function browse(p: string) {
-  const abs = resolve(p);
+  const abs = await realpath(resolve(p));
   if (!inRoots(abs)) throw new Error('cartella fuori dalle radici consentite');
 
   const entries = await readdir(abs, { withFileTypes: true });
@@ -140,6 +89,10 @@ const basePort = Number(process.env.PORT) || 4321;
 function routes(req: Request) {
   const url = new URL(req.url);
   const p = url.pathname;
+  if (req.method !== 'GET') return new Response('metodo non consentito', { status: 405 });
+  const origin = req.headers.get('origin');
+  if (origin && origin !== url.origin) return new Response('origine non consentita', { status: 403 });
+  if (!['localhost', '127.0.0.1'].includes(url.hostname)) return new Response('host non consentito', { status: 403 });
   const arg = url.searchParams.get('path');
 
   if (p === '/api/ping') return json({ app: SIGNATURE });
@@ -163,7 +116,11 @@ function routes(req: Request) {
       .catch((e) => json({ error: e.message }, 404));
   }
 
-  const file = Bun.file(join(PUBLIC, p === '/' ? 'index.html' : p));
+  let pathname;
+  try { pathname = decodeURIComponent(p); } catch { return new Response('path non valido', { status: 400 }); }
+  const asset = resolve(PUBLIC, '.' + (pathname === '/' ? '/index.html' : pathname));
+  if (!asset.startsWith(PUBLIC + '/')) return new Response('non consentito', { status: 403 });
+  const file = Bun.file(asset);
   return file.exists().then((ok) =>
     ok ? new Response(file, { headers: { 'Cache-Control': 'no-store' } })
        : new Response('non trovato', { status: 404 })
@@ -172,7 +129,10 @@ function routes(req: Request) {
 
 async function openBrowser(port: number) {
   if (process.env.NO_OPEN === '1') return;
-  Bun.spawn(['open', `http://localhost:${port}${query}`]).unref();
+  const address = `http://localhost:${port}${query}`;
+  const command = process.platform === 'darwin' ? ['open', address]
+    : process.platform === 'win32' ? ['cmd', '/c', 'start', '', address] : ['xdg-open', address];
+  try { Bun.spawn(command).unref(); } catch { /* The printed URL is still usable. */ }
 }
 
 /** Se la porta risponde ed è una nostra istanza, le passiamo il file invece di

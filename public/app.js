@@ -226,9 +226,17 @@ function setLive(on, pulse = false) {
 /** Modalità 1: il server conosce il path e ci manda gli aggiornamenti via SSE.
  *  È la strada buona — funziona su ogni browser e su share di rete. */
 let stream = null;
+let handleTimer;
+let watchGeneration = 0;
+function stopWatching() {
+  watchGeneration++;
+  stream?.close(); stream = null;
+  clearTimeout(handleTimer);
+}
+addEventListener('pagehide', stopWatching);
 
 function watchServer(path) {
-  stream?.close();
+  stopWatching();
   stream = new EventSource(`/api/watch?path=${encodeURIComponent(path)}`);
   stream.onopen = () => setLive(true);
   stream.onerror = () => setLive(false);
@@ -241,9 +249,12 @@ function watchServer(path) {
 }
 
 /** Apre un file per path assoluto: è ciò che fanno selettore, recenti e URL. */
+let openSequence = 0;
 async function openPath(path) {
+  const sequence = ++openSequence;
   const r = await fetch(`/api/open?path=${encodeURIComponent(path)}`);
   const d = await r.json();
+  if (sequence !== openSequence) return;
   if (d.error) throw new Error(d.error);
   setSource(d.text, d.name, { reset: true });
   watchServer(d.path);
@@ -254,20 +265,21 @@ async function openPath(path) {
 
 /** Modalità 2: handle del File System Access API, con polling su lastModified. */
 function watchHandle(handle) {
+  stopWatching();
+  const generation = watchGeneration;
   let last = -1;
   setLive(true);
   const tick = async () => {
     try {
       const f = await handle.getFile();
-      if (f.lastModified !== last) {
-        last = last === -1 ? f.lastModified : f.lastModified;
-        const text = await f.text();
-        if (text !== state.source) { setSource(text, f.name); setLive(true, true); }
-      }
-    } catch { setLive(false); }
+      const text = f.lastModified !== last ? await f.text() : null;
+      if (generation !== watchGeneration) return;
+      last = f.lastModified;
+      if (text !== null && text !== state.source) { setSource(text, f.name); setLive(true, true); }
+    } catch { if (generation === watchGeneration) setLive(false); }
+    if (generation === watchGeneration) handleTimer = setTimeout(tick, 700);
   };
   tick();
-  setInterval(tick, 700);
 }
 
 /* -------------------------------------------------------- selettore file */
@@ -277,7 +289,7 @@ const listing = $('#listing');
 const crumbs = $('#crumbs');
 
 const recents = () => {
-  try { return JSON.parse(storage.getItem('mv-recents') || '[]'); } catch { return []; }
+  try { const value = JSON.parse(storage.getItem('mv-recents') || '[]'); return Array.isArray(value) ? value.filter(p => typeof p === 'string') : []; } catch { return []; }
 };
 
 function remember(path) {
@@ -314,7 +326,7 @@ async function choose(path) {
 async function loadDir(dir) {
   const r = await fetch(`/api/browse?path=${encodeURIComponent(dir)}`);
   const d = await r.json();
-  if (d.error) { listing.innerHTML = `<li class="empty">${d.error}</li>`; return; }
+  if (d.error) { listing.replaceChildren(Object.assign(document.createElement('li'), { className: 'empty', textContent: d.error })); return; }
 
   storage.setItem('mv-dir', d.path);
 
@@ -360,7 +372,7 @@ function openPicker() {
   if (vscode) { vscode.postMessage({ type: 'open' }); return; }
   picker.hidden = false;
   drawRecents();
-  loadDir(storage.getItem('mv-dir') || '');   // vuoto = prima radice
+  loadDir(storage.getItem('mv-dir') || '').catch(e => { listing.textContent = e.message; });   // vuoto = prima radice
 }
 
 $('#pickerClose').onclick = () => { picker.hidden = true; };
@@ -383,7 +395,7 @@ stage.addEventListener('drop', async (e) => {
     }
   }
   const f = e.dataTransfer.files?.[0];
-  if (f) { setSource(await f.text(), f.name, { reset: true }); setLive(false); }
+  if (f) { stopWatching(); setSource(await f.text(), f.name, { reset: true }); setLive(false); }
 });
 
 /* ---------------------------------------------------------------- export */
