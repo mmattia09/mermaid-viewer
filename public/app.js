@@ -1,6 +1,7 @@
 /* mermaid-viewer — anteprima live, zoom infinito, export SVG/PNG/PDF. */
 
 import { prepareMarkdown } from './md-labels.js';
+import { renderDiagram } from './renderers.js';
 
 const $ = (s) => document.querySelector(s);
 const stage = $('#stage');
@@ -20,6 +21,8 @@ const state = {
   fresh: true,      // true finché non abbiamo fatto il primo "adatta"
   markdown: true,
   theme: 'auto',
+  engine: 'pele',
+  responsive: true,
   seq: 0,
 };
 
@@ -36,6 +39,7 @@ function mermaidTheme() {
 
 function applyChrome() {
   document.documentElement.dataset.theme = isDark() ? 'dark' : 'light';
+  document.documentElement.dataset.palette = state.theme;
 }
 
 /* --------------------------------------------------- markdown nelle celle */
@@ -44,46 +48,39 @@ const prepare = (src) => (state.markdown ? prepareMarkdown(src) : src);
 
 /* ------------------------------------------------------------------ render */
 
-/* mermaid.initialize() riparte sempre dai default: va ripassata la config
-   completa a ogni chiamata, altrimenti cambiare tema azzera htmlLabels. */
-const baseConfig = {
-  startOnLoad: false,
-  securityLevel: 'loose',
-  suppressErrorRendering: true,
-  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif',
-  // htmlLabels:true è obbligatorio: con false Mermaid non regge le etichette
-  // multiriga fra backtick ("splitLineToFitWidth does not support newlines") e
-  // il diagramma non viene proprio. Il prezzo è che l'SVG contiene
-  // <foreignObject>, che il canvas si rifiuta di rasterizzare: se ne occupa
-  // l'export PNG, rifacendo il render senza.
-  flowchart: { htmlLabels: true, useMaxWidth: false, padding: 18 },
-  htmlLabels: true,
-  markdownAutoWrap: true,
-};
-
 async function render() {
-  if (!state.source.trim()) return;
-  const id = `d${++state.seq}`;
-  mermaid.initialize({ ...baseConfig, theme: mermaidTheme() });
-
+  const seq = ++state.seq;
+  if (!state.source.trim()) {
+    canvas.replaceChildren(); state.svg = ''; errBox.hidden = true;
+    $('#drop').classList.remove('hide'); return;
+  }
   try {
-    const { svg } = await mermaid.render(id, prepare(state.source));
+    const { svg } = await renderDiagram(prepare(state.source), {
+      engine: state.engine, responsive: state.responsive,
+      width: Math.max(1, stage.clientWidth - 80), theme: mermaidTheme(),
+    });
+    if (seq !== state.seq) return;
     state.svg = svg;
     canvas.innerHTML = svg;
+    // Navigation and external images are disabled consistently for both engines.
+    canvas.querySelectorAll('a').forEach(el => { el.removeAttribute('href'); el.removeAttribute('xlink:href'); });
+    canvas.querySelectorAll('image').forEach(el => el.remove());
     const el = canvas.querySelector('svg');
     if (el) {
-      el.removeAttribute('style');
-      el.removeAttribute('width');
-      el.removeAttribute('height');
+      el.style.maxWidth = 'none';
       const vb = el.viewBox.baseVal;
       el.setAttribute('width', vb.width);
       el.setAttribute('height', vb.height);
     }
     errBox.hidden = true;
     $('#drop').classList.add('hide');
-    if (state.fresh) { fit(); state.fresh = false; } else { applyView(); }
+    if (state.fresh) {
+      if (state.responsive) fit();
+      else { state.view = { x: 40, y: 40, k: 1 }; applyView(); }
+      state.fresh = false;
+    } else applyView();
   } catch (e) {
-    document.getElementById(id)?.remove();       // Mermaid lascia un nodo orfano
+    if (seq !== state.seq) return;
     errBox.hidden = false;
     errBox.textContent = (e?.message ?? String(e)).trim();
   }
@@ -135,7 +132,7 @@ function fit(pad = 40) {
 /** Zoom centrato su un punto dello schermo: il punto resta fermo. */
 function zoomAt(cx, cy, factor) {
   const { x, y, k } = state.view;
-  const nk = k * factor;
+  const nk = Math.max(0.001, Math.min(1000, k * factor));
   state.view.k = nk;
   state.view.x = cx - (cx - x) * (nk / k);
   state.view.y = cy - (cy - y) * (nk / k);
@@ -393,6 +390,12 @@ function selfContained(el) {
   clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
   clone.setAttribute('width', w);
   clone.setAttribute('height', h);
+  // Resolve inherited Pele variables so exported SVG/PNG remains theme-independent.
+  const style = getComputedStyle(canvas);
+  for (const name of ['bg','fg','muted','line','surface','surface-alt','border','accent','critical','error','font','font-mono']) {
+    const value = style.getPropertyValue(`--pele-${name}`).trim();
+    if (value) clone.style.setProperty(`--pele-${name}`, value);
+  }
 
   const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
   bg.setAttribute('width', '100%');
@@ -413,17 +416,10 @@ function exportSvgString() {
  *  htmlLabels:false, che emette <text>. Non sempre riesce: i diagrammi con
  *  etichette multiriga non sono rappresentabili in quella modalità. */
 async function rasterSource() {
-  const cfg = {
-    ...baseConfig,
-    theme: mermaidTheme(),
-    flowchart: { ...baseConfig.flowchart, htmlLabels: false },
-    htmlLabels: false,
-  };
+  if (state.engine === 'pele') return exportSvgString();
   for (const src of [prepare(state.source), state.source]) {
-    const id = `r${++state.seq}`;
     try {
-      mermaid.initialize(cfg);
-      const { svg } = await mermaid.render(id, src);
+      const { svg } = await renderDiagram(src, { engine: 'mermaid', theme: mermaidTheme(), raster: true });
       if (/<foreignObject/.test(svg)) continue;
       const host = document.createElement('div');
       host.style.cssText = 'position:fixed;left:-99999px;top:0';
@@ -436,8 +432,6 @@ async function rasterSource() {
       }
     } catch {
       /* si prova la variante successiva */
-    } finally {
-      document.getElementById(id)?.remove();
     }
   }
   return null;
@@ -471,9 +465,9 @@ async function exportPNG(scale) {
     return;
   }
 
-  const limit = Math.min(CANVAS_MAX / out.w, CANVAS_MAX / out.h);
+  const limit = Math.min(CANVAS_MAX / out.w, CANVAS_MAX / out.h, Math.sqrt(32_000_000 / (out.w * out.h)));
   if (scale > limit) {
-    const capped = Math.max(1, Math.floor(limit * 10) / 10);
+    const capped = Math.min(limit, Math.sqrt(32_000_000 / (out.w * out.h)));
     if (capped < scale) {
       toast(`Diagramma troppo grande: PNG ridotto a ${capped}×`);
       scale = capped;
@@ -494,6 +488,7 @@ async function exportPNG(scale) {
     ctx.fillRect(0, 0, c.width, c.height);
     ctx.drawImage(img, 0, 0, c.width, c.height);
     const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+    if (!blob) throw new Error('Canvas vuoto');
     download(blob, 'png');
   } catch {
     toast('Export PNG non riuscito');
@@ -509,7 +504,7 @@ function exportPDF() {
   const w = window.open('', '_blank');
   if (!w) { toast('Il browser ha bloccato la finestra'); return; }
   w.document.write(`<!doctype html><html><head><meta charset="utf-8">
-<title>${(state.name || 'diagramma').replace(/\.[^.]+$/, '')}</title>
+<title>Diagramma</title>
 <style>
   @page { size: ${Math.ceil(out.w)}px ${Math.ceil(out.h)}px; margin: 0 }
   html,body { margin:0; padding:0 }
@@ -528,7 +523,15 @@ document.querySelectorAll('[data-zoom]').forEach((b) => {
   b.onclick = () => centerZoom(b.dataset.zoom === 'in' ? 1.2 : 1 / 1.2);
 });
 
-$('#md').onchange = (e) => { state.markdown = e.target.checked; render(); };
+$('#md').onchange = (e) => { state.markdown = e.target.checked; localStorage.setItem('mv-markdown', state.markdown); render(); };
+$('#engine').onchange = (e) => {
+  state.engine = e.target.value; localStorage.setItem('mv-engine', state.engine);
+  state.fresh = true; render();
+};
+$('#responsive').onchange = (e) => {
+  state.responsive = e.target.checked; localStorage.setItem('mv-responsive', state.responsive);
+  state.fresh = true; render();
+};
 
 const themeSel = $('#theme');
 themeSel.onchange = (e) => {
@@ -553,11 +556,24 @@ menu.onclick = (e) => {
 prefersDark.addEventListener('change', () => {
   if (state.theme === 'auto') { applyChrome(); render(); }
 });
-addEventListener('resize', () => { if (state.fresh) fit(); });
+let resizeTimer;
+new ResizeObserver(() => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (!state.responsive) return;
+    state.fresh = true; render();
+  }, 120);
+}).observe(stage);
 
 /* ------------------------------------------------------------------ boot */
 
 state.theme = localStorage.getItem('mv-theme') || 'auto';
+state.engine = localStorage.getItem('mv-engine') === 'mermaid' ? 'mermaid' : 'pele';
+state.responsive = localStorage.getItem('mv-responsive') !== 'false';
+state.markdown = localStorage.getItem('mv-markdown') !== 'false';
+$('#engine').value = state.engine;
+$('#responsive').checked = state.responsive;
+$('#md').checked = state.markdown;
 themeSel.value = state.theme;
 applyChrome();
 applyView();

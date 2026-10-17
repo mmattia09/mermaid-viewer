@@ -23,6 +23,8 @@
   </div>
 
   <div class="group right">
+    <select id="engine" class="btn" aria-label="Motore di rendering"><option value="pele">Pele</option><option value="mermaid">Mermaid</option></select>
+    <label class="chk" title="Adatta il diagramma alla larghezza disponibile"><input type="checkbox" id="responsive" checked> Responsive</label>
     <label class="chk" title="Interpreta **grassetto**, *corsivo* e `codice` dentro le celle">
       <input type="checkbox" id="md" checked> Markdown
     </label>
@@ -69,7 +71,7 @@
 <div id="err" class="err" hidden></div>
 <div id="toast" class="toast" hidden></div>
 
-<script src="/vendor/mermaid.min.js"></script>
+
 <script src="/app.js" type="module"></script>
 </body>
 </html>

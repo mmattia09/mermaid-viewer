@@ -9,11 +9,13 @@
   },
   "scripts": {
     "start": "bun server.ts",
-    "vendor": "cp node_modules/mermaid/dist/mermaid.min.js public/vendor/",
+    "vendor": "node scripts/vendor.mjs",
     "test": "bun test.mjs"
   },
   "devDependencies": {
+    "@vscode/vsce": "^4.0.0",
     "jsdom": "^29.1.1",
-    "mermaid": "^11.0.0"
+    "mermaid": "^11.0.0",
+    "pele": "1.6.0"
   }
 }

@@ -325,3 +325,24 @@ select.btn { padding-right: 6px; }
   .stage { position: static; inset: auto; overflow: visible; background: #fff; }
   .canvas { transform: none !important; position: static; }
 }
+
+/* The same responsive toolbar is used in narrow VS Code editor groups. */
+body { display: flex; flex-direction: column; }
+.bar { height: auto; min-height: 44px; flex-wrap: wrap; padding: 7px 10px; gap: 8px 14px; flex: none; }
+.stage { position: relative; inset: auto; flex: 1; min-height: 0; touch-action: none; }
+.group.right { flex-wrap: wrap; }
+.canvas {
+  --pele-bg: var(--bg); --pele-fg: var(--fg); --pele-muted: var(--dim);
+  --pele-line: var(--fg); --pele-surface: var(--bar); --pele-surface-alt: var(--btn-h);
+  --pele-border: var(--dim); --pele-accent: var(--accent); --pele-error: var(--bad);
+  --pele-critical: var(--bad); --pele-font: system-ui, sans-serif;
+  --pele-font-mono: ui-monospace, monospace;
+}
+:root[data-palette="forest"] .canvas { --pele-surface: #e4f0df; --pele-surface-alt: #cddfc6; --pele-border: #54794b; --pele-line: #355431; --pele-fg: #243c21; }
+:root[data-palette="neutral"] .canvas { --pele-surface: #eee; --pele-surface-alt: #ddd; --pele-border: #777; --pele-line: #444; --pele-fg: #222; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 600px) {
+  .group.right { width: 100%; margin: 0; }
+  .group.center { margin-left: auto; margin-right: 0; }
+  .file { max-width: 38vw; }
+}
