@@ -10,12 +10,92 @@
   "scripts": {
     "start": "bun server.ts",
     "vendor": "node scripts/vendor.mjs",
-    "test": "bun test.mjs"
+    "test": "bun test.mjs",
+    "package:extension": "vsce package --no-dependencies --out artifacts/mermaid-viewer.vsix"
   },
   "devDependencies": {
     "@vscode/vsce": "^4.0.0",
     "jsdom": "^29.1.1",
     "mermaid": "^11.0.0",
     "pele": "1.6.0"
+  },
+  "displayName": "Mermaid Viewer \u2014 Pele & Mermaid",
+  "publisher": "mmattia09",
+  "license": "MIT",
+  "main": "./extension/extension.cjs",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Visualization"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mmattia09/mermaid-viewer.git"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "mermaidViewer.openPreview",
+        "title": "Apri anteprima a lato",
+        "category": "Mermaid Viewer",
+        "icon": "$(open-preview)"
+      }
+    ],
+    "languages": [
+      {
+        "id": "mermaid",
+        "aliases": [
+          "Mermaid"
+        ],
+        "extensions": [
+          ".mmd",
+          ".mermaid"
+        ]
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "mermaidViewer.openPreview",
+          "when": "resourceExtname == .mmd || resourceExtname == .mermaid",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "mermaidViewer.openPreview",
+          "when": "resourceExtname == .mmd || resourceExtname == .mermaid",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "mermaidViewer.openPreview",
+        "key": "ctrl+k v",
+        "mac": "cmd+k v",
+        "when": "editorTextFocus && editorLangId == mermaid"
+      }
+    ],
+    "configuration": {
+      "title": "Mermaid Viewer",
+      "properties": {
+        "mermaidViewer.engine": {
+          "type": "string",
+          "enum": [
+            "pele",
+            "mermaid"
+          ],
+          "default": "pele",
+          "description": "Motore predefinito per le nuove anteprime."
+        },
+        "mermaidViewer.responsive": {
+          "type": "boolean",
+          "default": true,
+          "description": "Adatta il diagramma alla larghezza del pannello."
+        }
+      }
+    }
   }
 }

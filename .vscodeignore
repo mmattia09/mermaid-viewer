@@ -1,0 +1,12 @@
+.git/**
+.vscode/**
+node_modules/**
+tests/**
+docs/**
+scripts/**
+artifacts/**
+*.vsix
+bun.lock
+server.ts
+mmv
+test.mjs

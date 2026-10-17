@@ -3,6 +3,12 @@
 import { prepareMarkdown } from './md-labels.js';
 import { renderDiagram } from './renderers.js';
 
+const vscode = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : null;
+const saved = vscode?.getState() || {};
+const storage = {
+  getItem(key) { try { return vscode ? saved[key] ?? null : localStorage.getItem(key); } catch { return null; } },
+  setItem(key, value) { try { if (vscode) { saved[key] = String(value); vscode.setState(saved); } else localStorage.setItem(key, value); } catch {} },
+};
 const $ = (s) => document.querySelector(s);
 const stage = $('#stage');
 const canvas = $('#canvas');
@@ -243,7 +249,7 @@ async function openPath(path) {
   watchServer(d.path);
   remember(d.path);
   history.replaceState(null, '', `/?path=${encodeURIComponent(d.path)}`);
-  localStorage.setItem('mv-dir', d.path.replace(/\/[^/]*$/, ''));
+  storage.setItem('mv-dir', d.path.replace(/\/[^/]*$/, ''));
 }
 
 /** Modalità 2: handle del File System Access API, con polling su lastModified. */
@@ -271,12 +277,12 @@ const listing = $('#listing');
 const crumbs = $('#crumbs');
 
 const recents = () => {
-  try { return JSON.parse(localStorage.getItem('mv-recents') || '[]'); } catch { return []; }
+  try { return JSON.parse(storage.getItem('mv-recents') || '[]'); } catch { return []; }
 };
 
 function remember(path) {
   const list = [path, ...recents().filter((p) => p !== path)].slice(0, 6);
-  localStorage.setItem('mv-recents', JSON.stringify(list));
+  storage.setItem('mv-recents', JSON.stringify(list));
   drawRecents();
 }
 
@@ -310,7 +316,7 @@ async function loadDir(dir) {
   const d = await r.json();
   if (d.error) { listing.innerHTML = `<li class="empty">${d.error}</li>`; return; }
 
-  localStorage.setItem('mv-dir', d.path);
+  storage.setItem('mv-dir', d.path);
 
   // briciole: le radici consentite più il percorso relativo alla radice attiva
   crumbs.replaceChildren();
@@ -351,9 +357,10 @@ async function loadDir(dir) {
 }
 
 function openPicker() {
+  if (vscode) { vscode.postMessage({ type: 'open' }); return; }
   picker.hidden = false;
   drawRecents();
-  loadDir(localStorage.getItem('mv-dir') || '');   // vuoto = prima radice
+  loadDir(storage.getItem('mv-dir') || '');   // vuoto = prima radice
 }
 
 $('#pickerClose').onclick = () => { picker.hidden = true; };
@@ -364,6 +371,7 @@ stage.addEventListener('dragleave', () => stage.classList.remove('dragover'));
 stage.addEventListener('drop', async (e) => {
   e.preventDefault();
   stage.classList.remove('dragover');
+  if (vscode) return;
   const item = e.dataTransfer.items?.[0];
   if (item?.getAsFileSystemHandle) {
     const h = await item.getAsFileSystemHandle();
@@ -438,6 +446,11 @@ async function rasterSource() {
 }
 
 function download(blob, ext) {
+  if (vscode) {
+    const reader = new FileReader();
+    reader.onload = () => vscode.postMessage({ type: 'export', ext, data: reader.result.split(',')[1] });
+    reader.readAsDataURL(blob); return;
+  }
   const base = (state.name || 'diagramma').replace(/\.[^.]+$/, '');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -523,20 +536,20 @@ document.querySelectorAll('[data-zoom]').forEach((b) => {
   b.onclick = () => centerZoom(b.dataset.zoom === 'in' ? 1.2 : 1 / 1.2);
 });
 
-$('#md').onchange = (e) => { state.markdown = e.target.checked; localStorage.setItem('mv-markdown', state.markdown); render(); };
+$('#md').onchange = (e) => { state.markdown = e.target.checked; storage.setItem('mv-markdown', state.markdown); render(); };
 $('#engine').onchange = (e) => {
-  state.engine = e.target.value; localStorage.setItem('mv-engine', state.engine);
+  state.engine = e.target.value; storage.setItem('mv-engine', state.engine);
   state.fresh = true; render();
 };
 $('#responsive').onchange = (e) => {
-  state.responsive = e.target.checked; localStorage.setItem('mv-responsive', state.responsive);
+  state.responsive = e.target.checked; storage.setItem('mv-responsive', state.responsive);
   state.fresh = true; render();
 };
 
 const themeSel = $('#theme');
 themeSel.onchange = (e) => {
   state.theme = e.target.value;
-  localStorage.setItem('mv-theme', state.theme);
+  storage.setItem('mv-theme', state.theme);
   applyChrome();
   render();
 };
@@ -567,10 +580,10 @@ new ResizeObserver(() => {
 
 /* ------------------------------------------------------------------ boot */
 
-state.theme = localStorage.getItem('mv-theme') || 'auto';
-state.engine = localStorage.getItem('mv-engine') === 'mermaid' ? 'mermaid' : 'pele';
-state.responsive = localStorage.getItem('mv-responsive') !== 'false';
-state.markdown = localStorage.getItem('mv-markdown') !== 'false';
+state.theme = storage.getItem('mv-theme') || 'auto';
+state.engine = storage.getItem('mv-engine') === 'mermaid' ? 'mermaid' : 'pele';
+state.responsive = storage.getItem('mv-responsive') !== 'false';
+state.markdown = storage.getItem('mv-markdown') !== 'false';
 $('#engine').value = state.engine;
 $('#responsive').checked = state.responsive;
 $('#md').checked = state.markdown;
@@ -579,7 +592,24 @@ applyChrome();
 applyView();
 
 const path = new URLSearchParams(location.search).get('path');
-if (path) {
+if (vscode) {
+  document.querySelector('[data-export="pdf"]').hidden = true;
+  let defaults;
+  addEventListener('message', ({ data }) => {
+    if (data?.type !== 'document' || typeof data.text !== 'string') return;
+    const nextDefaults = JSON.stringify(data.settings);
+    if (defaults !== nextDefaults) {
+      const initial = defaults === undefined;
+      state.engine = initial && storage.getItem('mv-engine') ? state.engine : data.settings.engine;
+      state.responsive = initial && storage.getItem('mv-responsive') !== null ? state.responsive : data.settings.responsive;
+      $('#engine').value = state.engine; $('#responsive').checked = state.responsive;
+      defaults = nextDefaults;
+    }
+    setSource(data.text, data.name);
+    setLive(true, true);
+  });
+  vscode.postMessage({ type: 'ready' });
+} else if (path) {
   openPath(path).catch((e) => {
     errBox.hidden = false;
     errBox.textContent = `Impossibile aprire il file: ${e.message}`;
