@@ -1,0 +1,26 @@
+const vscode = require('vscode');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+exports.run = async () => {
+  const extension = vscode.extensions.getExtension('mmattia09.mermaid-viewer');
+  assert.ok(extension, 'Extension is discoverable');
+  await extension.activate();
+  assert.ok((await vscode.commands.getCommands()).includes('mermaidViewer.openPreview'));
+  const doc = await vscode.workspace.openTextDocument(path.resolve(__dirname, 'fixtures/flow.mmd'));
+  await vscode.window.showTextDocument(doc);
+  await vscode.commands.executeCommand('mermaidViewer.openPreview', doc.uri);
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  const preview = vscode.window.tabGroups.all.flatMap(group => group.tabs).find(tab => tab.label.startsWith('Anteprima:'));
+  assert.ok(preview, 'Preview opened beside the file');
+  assert.equal(vscode.window.tabGroups.all.length, 2);
+  const edit = new vscode.WorkspaceEdit();
+  edit.insert(doc.uri, new vscode.Position(0, 0), '%% unsaved update\n');
+  await vscode.workspace.applyEdit(edit);
+  assert.ok(doc.isDirty);
+  await new Promise(resolve => setTimeout(resolve, 300));
+  await vscode.commands.executeCommand('mermaidViewer.openPreview', doc.uri);
+  assert.equal(vscode.window.tabGroups.all.flatMap(group => group.tabs).filter(tab => tab.label.startsWith('Anteprima:')).length, 1);
+  await vscode.window.tabGroups.close(preview);
+  await vscode.commands.executeCommand('workbench.action.files.revert');
+  console.log('VS Code: activation, side preview, unsaved edit, reuse and disposal passed');
+};

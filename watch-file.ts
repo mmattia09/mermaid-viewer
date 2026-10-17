@@ -40,7 +40,10 @@ export function watchFile(path: string, listener: (text: string) => void) {
   entry.listeners.add(listener);
   if (entry.text !== undefined) listener(entry.text);
   const current = entry;
+  let stopped = false;
   return () => {
+    if (stopped) return;
+    stopped = true;
     current.listeners.delete(listener);
     if (!current.listeners.size) { current.stop(); watches.delete(path); }
   };

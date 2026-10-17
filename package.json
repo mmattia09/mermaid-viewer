@@ -10,8 +10,9 @@
   "scripts": {
     "start": "bun server.ts",
     "vendor": "node scripts/vendor.mjs",
-    "test": "bun test.mjs",
-    "package:extension": "vsce package --no-dependencies --out artifacts/mermaid-viewer.vsix"
+    "test": "bun test tests/*.test.js && node test.mjs tests/fixtures",
+    "package:extension": "mkdir -p artifacts && vsce package --no-dependencies --out artifacts/mermaid-viewer.vsix",
+    "test:extension": "node scripts/test-extension.mjs"
   },
   "devDependencies": {
     "@vscode/vsce": "^4.0.0",

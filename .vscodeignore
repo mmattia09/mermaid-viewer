@@ -10,3 +10,6 @@ bun.lock
 server.ts
 mmv
 test.mjs
+
+watch-file.ts
+.gitignore

@@ -42,7 +42,7 @@ const mermaid = (await import('mermaid')).default;
 // stessa configurazione di public/app.js
 mermaid.initialize({
   startOnLoad: false,
-  securityLevel: 'loose',
+  securityLevel: 'strict',
   suppressErrorRendering: true,
   flowchart: { htmlLabels: true, useMaxWidth: false, padding: 18 },
   htmlLabels: true,
@@ -51,7 +51,7 @@ mermaid.initialize({
 
 async function collect(p) {
   const st = await stat(p);
-  if (st.isFile()) return p.endsWith('.mmd') ? [p] : [];
+  if (st.isFile()) return /\.(mmd|mermaid)$/i.test(p) ? [p] : [];
   const out = [];
   for (const e of await readdir(p, { withFileTypes: true })) {
     if (e.name.startsWith('.') || e.name === 'node_modules') continue;

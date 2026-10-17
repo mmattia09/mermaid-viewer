@@ -1,226 +1,144 @@
-# mermaid-viewer
+# Mermaid Viewer — Pele & Mermaid
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
-[![Bun](https://img.shields.io/badge/runtime-bun-f9f1e1?style=for-the-badge)](https://bun.sh)
-[![Zero runtime dependencies](https://img.shields.io/badge/runtime%20deps-0-34c759?style=for-the-badge)](#how-its-built)
+Anteprima live dei file `.mmd` e `.mermaid`, nel browser e a lato dell’editor
+VS Code. Interfaccia in italiano, pan/zoom, temi ed esportazione locale.
 
-A live preview for [Mermaid](https://mermaid.js.org) diagrams — the VS Code extension
-experience, in the browser: open a `.mmd` from the command line and the page redraws
-on every save **keeping zoom and position**, so you can work on one detail without
-losing your framing. Unlimited zoom, markdown rendered inside the cells, export to
-SVG, PNG and PDF.
+## Estensione VS Code
 
-Born to reread hand-written concept maps, it works with any `.mmd` or `.mermaid`
-file. No build step, no account, no network: a local server that serves a static page
-and watches a file.
+1. Installa il pacchetto `artifacts/mermaid-viewer.vsix` con **Extensions → … →
+   Install from VSIX…**.
+2. Apri un file `.mmd` o `.mermaid`.
+3. Premi l’icona **Apri anteprima a lato** nella barra dell’editor, oppure esegui
+   **Mermaid Viewer: Apri anteprima a lato** dalla palette comandi.
+   È disponibile anche nel menu contestuale dell’Explorer.
+4. Scorciatoia: `Cmd+K V` su macOS, `Ctrl+K V` su Windows/Linux.
+
+L’anteprima segue anche le modifiche non salvate, con debounce di 100 ms. Ogni
+file ha il proprio pannello: richiamare il comando riutilizza quello esistente.
+Non richiede Bun, un server o una connessione Internet.
+
+Puoi scegliere **Pele / Mermaid** e **Responsive** nella barra. Le opzioni della
+singola anteprima sopravvivono quando il pannello viene nascosto; i valori
+predefiniti per le nuove anteprime sono configurabili nelle impostazioni:
+
+```json
+{
+  "mermaidViewer.engine": "pele",
+  "mermaidViewer.responsive": true
+}
+```
+
+Il tema automatico segue VS Code. SVG e PNG aprono la finestra di salvataggio
+nativa. Il PDF è disponibile nell’app browser tramite stampa.
+
+## App browser
+
+Richiede [Bun](https://bun.sh). I renderer distribuiti sono inclusi nel repository:
+non serve installare dipendenze o compilare per avviare l’app.
 
 ```bash
-mmv "path/to/file.mmd"
+./mmv path/to/diagram.mmd
+# oppure, senza file iniziale:
+bun server.ts
 ```
 
-> The app's interface is in Italian.
+Il server ascolta su `127.0.0.1:4321` e apre il browser. Usa **Apri…**, i recenti
+o trascina un file. I file aperti dal selettore si aggiornano al salvataggio;
+il trascinamento può fornire solo un’istantanea se il browser non supporta gli
+handle del filesystem. Le modifiche mantengono zoom e posizione.
 
-## Features
-
-- **Live reload that keeps your place** — every save re-renders the diagram, but zoom
-  and position stay where they were. A dot next to the filename shows whether the
-  connection is alive.
-- **Unlimited pan and zoom** — drag, wheel, pinch, zoom at the pointer, *fit to
-  window*, back to 100%.
-- **Markdown inside cells** — `**bold**`, `*italic*` and `` `code` `` rendered even in
-  labels written without backticks, by rewriting the source on the fly without
-  touching the file. Toggleable with a checkbox.
-- **Export to SVG, PNG 1×/2×/4× and PDF** — vector where it matters, with the PNG
-  limits stated up front instead of saving empty files (see [How it
-  works](#how-it-works)).
-- **Five themes** — auto (follows the system), light, dark, neutral, forest. The
-  choice sticks.
-- **Built-in file picker** — browse folders from the browser (⌘O), with recent files
-  one click away, or drag a `.mmd` into the window.
-- **A single instance** — if the port is already taken by the viewer, the file is
-  handed to the running instance in a new tab instead of failing the command.
-- **No runtime dependencies** — Mermaid ships inside the repository, everything else
-  is plain JavaScript. Not a single network request goes out.
-
-## How it works
-
-`mmv` starts a local server on `127.0.0.1`, opens the browser on the page and keeps
-listening. The file is served over HTTP and watched through an
-[SSE](https://developer.mozilla.org/docs/Web/API/Server-sent_events) channel: on every
-change the new text reaches the page, which re-renders and nothing else.
-
-### How changes are detected
-
-The watcher compares the file's **contents** every 500 ms; `fs.watch` is only an
-accelerator on local disks. It looks crude, but it is the only thing that survives all
-three cases:
-
-- **atomic saves** — many editors write a temporary file and rename it over the
-  original, so `fs.watch` stays attached to the old inode and goes silent;
-- **network shares (SMB)** — `fs.watch` reports nothing at all, and the macOS SMB
-  client caches attributes: `stat()` keeps returning the **same `mtime`** even after a
-  rewrite. The bytes read back are always current, though, so comparing contents works
-  where comparing `mtime` fails silently;
-- **local disk** — everything works here, and `fs.watch` makes the response instant.
-
-### Markdown inside cells
-
-Mermaid only interprets markdown inside labels wrapped in backticks, and hand-written
-maps usually don't do that:
-
-```
-A("**Counter-Reformation**: the Church reacts")
-```
-
-With the **Markdown** option on (the default) the source is rewritten before it
-reaches Mermaid, so the bold shows up without editing your files. Comment lines
-starting with `%%` and labels already in markdown form are left alone.
-
-### Why PNG sometimes isn't possible
-
-Diagrams are rendered with `htmlLabels: true`, otherwise Mermaid can't handle
-multi-line labels between backticks and fails with *"splitLineToFitWidth does not
-support newlines in the line"*. But `htmlLabels: true` emits `<foreignObject>`, and an
-SVG containing those **cannot be rasterised**: the canvas is marked *tainted* and
-`toBlob()` throws a `SecurityError`.
-
-So for PNG the diagram is rendered again with `htmlLabels: false`, which emits
-`<text>`. On diagrams without multi-line labels that works; on the others it doesn't,
-and the button says so instead of saving an empty file. SVG and PDF always work. Past
-roughly 16384 px per side the PNG scale factor is lowered automatically, because
-Chrome would produce a blank image.
-
-### How it's built
-
-No build step: what's in the repository is what runs.
-
-```
-mmv                       command-line launcher
-server.ts                 Bun server: static files, folder browsing, SSE watch
-public/index.html
-public/app.js             rendering, pan/zoom, export
-public/md-labels.js       label rewriting for markdown
-public/style.css
-public/vendor/mermaid.min.js
-test.mjs                  regression run over a folder of .mmd files
-```
-
-## Installation
-
-### Requirements
-
-[Bun](https://bun.sh) 1.1 or newer. The `mmv` launcher is a bash script, so it needs a
-POSIX shell: macOS and Linux are fine, Windows needs WSL or Git Bash. Opening the
-browser automatically uses the macOS `open` command; elsewhere the server still starts
-and you just open the address it prints.
-
-```bash
-git clone https://github.com/mmattia09/mermaid-viewer.git
-cd mermaid-viewer
-chmod +x mmv
-```
-
-Nothing needs installing to use it: `bun install` only pulls the dev dependencies,
-which are there for the tests and for updating Mermaid.
-
-### Alias
-
-```bash
-alias mmv='~/mermaid-viewer/mmv'
-```
-
-Put it in `~/.zshrc` or `~/.bashrc`, with the path where you cloned the repository.
-Then:
-
-```bash
-mmv diagram.mmd
-```
-
-With no arguments the viewer starts empty: use **Apri…** or drag a file into the
-window.
-
-### Updating Mermaid
-
-```bash
-bun install
-bun run vendor
-```
-
-## Configuration
-
-There is no config file: everything comes from environment variables or from the
-controls in the toolbar.
-
-| Variable | Default | What it does |
+| Opzione | Default | Descrizione |
 |---|---|---|
-| `PORT` | `4321` | Starting port. If it's taken by another instance the file is handed over to it; if an unrelated program holds it, up to 12 following ports are tried |
-| `NO_OPEN` | — | With `NO_OPEN=1` the browser is not opened: the server only prints the address |
+| `PORT` | `4321` | Porta iniziale; vengono provate fino a 12 porte |
+| `NO_OPEN` | — | `1` evita l’apertura automatica del browser |
 
-Set them for a single run:
+Se trova un’altra istanza del viewer sulla porta, il launcher apre il nuovo file
+in una scheda di quell’istanza. Le radici consentite sono home, `/Volumes` e la
+cartella di avvio; i percorsi reali sono verificati anche per i link simbolici.
 
-```bash
-PORT=5000 NO_OPEN=1 mmv diagram.mmd
-```
+## Renderer e dimensioni
 
-or for good, next to the alias in `~/.zshrc`:
+[Pele](https://pele.run/) è il motore predefinito. Si caricano solo il nucleo e i
+tipi di diagramma necessari. Mermaid viene caricato quando viene selezionato.
+Entrambi lavorano localmente: il sorgente non viene inviato a servizi esterni.
 
-```bash
-alias mmv='PORT=5000 ~/mermaid-viewer/mmv'
-```
+| | Responsive attivo | Responsive disattivato |
+|---|---|---|
+| Pele | Adatta il layout allo spazio: può avvolgere etichette e cambiare direzione | Mantiene direzione e dimensioni naturali |
+| Mermaid | Mantiene il layout Mermaid e adatta lo zoom al pannello | Dimensioni naturali, zoom iniziale al 100% |
 
-The server listens on `127.0.0.1` only and can browse just three roots: the user's
-home, `/Volumes` and the folder it was launched from. The rest of the filesystem is
-out of reach. Recognised extensions are `.mmd` and `.mermaid`.
+Il ridimensionamento automatico usa un debounce di 120 ms. In modalità fissa
+puoi comunque usare zoom e **Adatta** manualmente. Cambiare motore o modalità
+ricalcola l’inquadratura; le modifiche al file conservano la vista corrente.
 
-The chosen theme, the last folder opened and the recent files live in the browser's
-`localStorage`.
+Pele interpreta sintassi Mermaid con un proprio layout: posizioni e percorsi
+possono differire. Non supporta HTML arbitrario nelle etichette o plugin esterni;
+i colori `themeVariables` Mermaid non si applicano a Pele. Puoi passare a Mermaid
+per confrontare la resa. Non viene effettuato un cambio di motore silenzioso in
+caso di errore. Vedi [compatibilità Pele](https://pele.run/compatibility) e
+[note di ricerca](docs/pele.md).
 
-### Controls
+Cinque temi: automatico, chiaro, scuro, neutro e forest. L’opzione **Markdown**
+converte le etichette con grassetto/corsivo/codice nel formato delle markdown
+string senza modificare il file originale. Le preferenze del browser sono salvate
+in localStorage. I link e le immagini nei diagrammi sono disabilitati.
 
-| | |
+## Export e controlli
+
+- **SVG**: vettoriale, con dimensioni, sfondo e variabili di tema Pele incorporate.
+- **PNG 1× / 2× / 4×**: Pele usa direttamente l’SVG; Mermaid viene renderizzato
+  con etichette SVG. Alcune etichette Mermaid multilinea non sono esportabili in
+  PNG: in quel caso viene mostrato un messaggio. Il fattore viene ridotto oltre
+  16.384 pixel per lato o 32 milioni di pixel complessivi.
+- **PDF**: nell’app browser apre la stampa; scegli “Salva come PDF”.
+
+| Controllo | Azione |
 |---|---|
-| drag | move the diagram |
-| wheel / two fingers | move |
-| ⌘ or ctrl + wheel, pinch | zoom at the pointer |
-| double click, `F` | fit to window |
-| `+` `−` | zoom |
-| `0` | back to 100% |
-| ⌘O | open a file |
+| Trascina / rotella | Pan |
+| Cmd/Ctrl + rotella, pinch | Zoom sul puntatore |
+| `+`, `−` | Zoom |
+| `0`, pulsante percentuale | 100% |
+| `F`, doppio clic, Adatta | Adatta alla finestra |
+| Cmd/Ctrl + O | Apri file |
 
-The percentage button takes you back to 100%.
+Un sorgente vuoto cancella l’anteprima. Un errore mantiene l’ultimo diagramma
+valido e mostra il messaggio come testo. Il limite del sorgente è 50.000 caratteri.
 
-## Tests
+## Sviluppo e verifica
 
 ```bash
-bun install
-bun test.mjs path/to/folder
+bun install --frozen-lockfile
+bun run test                # renderer, watcher, server e fixture Mermaid
+bun run test:extension      # test nell’Extension Host di VS Code installato
+bun run package:extension   # genera artifacts/mermaid-viewer.vsix
 ```
 
-Every `.mmd` found is rendered twice, raw and after `prepareMarkdown()`. It uses
-`render()` and not `parse()` on purpose: a diagram can pass the parser and then fail
-while being drawn, and that is exactly how the multi-line label problem went unnoticed.
+Per `test:extension`, su macOS viene usata `/Applications/Visual Studio Code.app`;
+su altri sistemi imposta `VSCODE_EXECUTABLE` al binario VS Code. Il test usa un
+profilo temporaneo e non installa l’estensione nel profilo personale.
+Premi F5 nel repository per provarla manualmente nell’Extension Development Host.
 
-## Contributing
+`tests/browser.js` è un’espressione asincrona eseguibile nella console del viewer:
+verifica renderer lazy, responsive/fisso, aggiornamenti e SVG/PNG in un iframe con
+CSP e messaggi equivalenti alla webview. I test nell’Extension Host verificano
+attivazione, pannello affiancato, modifiche non salvate, riuso e chiusura.
 
-Bug reports and ideas → [GitHub Issues](https://github.com/mmattia09/mermaid-viewer/issues).
-For a pull request:
+```bash
+node test.mjs path/to/folder # regressione Mermaid su file personali
+bun run vendor              # rigenera gli asset locali dalle versioni nel lockfile
+```
 
-1. Open an issue first if the change is large, so you don't work for nothing.
-2. One branch per topic, small commits, Italian imperative commit messages like the
-   ones already there.
-3. Before opening the PR, run the tests against a folder of real diagrams and check
-   that SVG, PNG and PDF export still work.
-4. No runtime dependencies and no build step: if a feature needs an extra package,
-   let's discuss it in the issue.
+Il frontend è JavaScript senza framework. `public/renderers.js` isola i motori e
+serializza Mermaid, che ha una configurazione globale. Il viewer ignora i risultati
+di render superati da una nuova modifica. `watch-file.ts` condivide un watcher
+per percorso fra tutte le schede: osserva la directory per gestire i salvataggi
+atomici e confronta i contenuti ogni 500 ms anche sui filesystem di rete.
+L’estensione usa `extension/extension.cjs` e lo stesso frontend, con risorse locali,
+CSP e trasporto a messaggi al posto di HTTP/SSE.
 
-The code style is the one in the existing files — ES modules, no framework, comments
-only where the *why* isn't obvious from the code.
+I renderer sono vendorizzati per consentire l’uso offline senza build; le rispettive
+licenze sono in `public/vendor`. Il pacchetto VSIX include gli asset già pronti.
 
-## Authors
+## Licenza
 
-By [@mmattia09](https://github.com/mmattia09). Built with the help of
-[Claude Code](https://claude.com/claude-code).
-
-## License
-
-[MIT](LICENSE).
+[MIT](LICENSE). Autore: [@mmattia09](https://github.com/mmattia09).

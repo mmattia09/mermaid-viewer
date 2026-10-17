@@ -36,10 +36,10 @@ const state = {
 
 const prefersDark = matchMedia('(prefers-color-scheme: dark)');
 const isDark = () =>
-  state.theme === 'dark' || (state.theme === 'auto' && prefersDark.matches);
+  state.theme === 'dark' || (state.theme === 'auto' && (vscode ? document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast') : prefersDark.matches));
 
 function mermaidTheme() {
-  if (state.theme === 'auto') return prefersDark.matches ? 'dark' : 'default';
+  if (state.theme === 'auto') return isDark() ? 'dark' : 'default';
   return state.theme;
 }
 
@@ -605,6 +605,8 @@ applyView();
 
 const path = new URLSearchParams(location.search).get('path');
 if (vscode) {
+  new MutationObserver(() => { if (state.theme === 'auto') { applyChrome(); render(); } })
+    .observe(document.body, { attributes: true, attributeFilter: ['class'] });
   document.querySelector('[data-export="pdf"]').hidden = true;
   let defaults;
   addEventListener('message', ({ data }) => {
