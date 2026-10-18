@@ -35,7 +35,7 @@ function activate(context) {
             const files = await vscode.window.showOpenDialog({ canSelectMany: false, filters: { Mermaid: ['mmd', 'mermaid'] } });
             if (files?.[0]) vscode.commands.executeCommand('mermaidViewer.openPreview', files[0]);
           }
-          if (message?.type === 'export' && ['svg', 'png'].includes(message.ext) && typeof message.data === 'string' && message.data.length <= 64_000_000) {
+          if (message?.type === 'export' && ['svg', 'png', 'pdf'].includes(message.ext) && typeof message.data === 'string' && message.data.length <= 64_000_000) {
             try {
               const target = await vscode.window.showSaveDialog({
                 defaultUri: vscode.Uri.joinPath(document.uri, '..', basename(document.uri.path).replace(/\.[^.]+$/, '') + '.' + message.ext),

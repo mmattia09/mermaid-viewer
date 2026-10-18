@@ -1,6 +1,6 @@
 {
   "name": "mermaid-viewer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Anteprima Mermaid live con zoom infinito ed export SVG/PNG/PDF",
   "type": "module",
@@ -17,6 +17,7 @@
   "devDependencies": {
     "@vscode/vsce": "^4.0.0",
     "jsdom": "^29.1.1",
+    "jspdf": "^4.2.1",
     "mermaid": "^11.0.0",
     "pele": "1.6.0"
   },

@@ -2,6 +2,7 @@
 
 import { prepareMarkdown } from './md-labels.js';
 import { renderDiagram } from './renderers.js';
+import { rasterize } from './export-image.js';
 
 const vscode = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : null;
 const saved = vscode?.getState() || {};
@@ -477,53 +478,36 @@ function exportSVG() {
   if (out) download(new Blob([out.text], { type: 'image/svg+xml' }), 'svg');
 }
 
-/** Oltre ~16384px per lato Chrome restituisce una tela vuota senza errori:
- *  meglio ridurre il fattore e dirlo, che salvare un PNG bianco. */
-const CANVAS_MAX = 16384;
-
 async function exportPNG(scale) {
   if (!canvas.querySelector('svg')) return;
   toast('Preparo il PNG…');
-  const out = await rasterSource();
-  if (!out) {
-    toast('PNG non disponibile per questo diagramma: usa SVG o PDF');
-    return;
-  }
-
-  const limit = Math.min(CANVAS_MAX / out.w, CANVAS_MAX / out.h, Math.sqrt(32_000_000 / (out.w * out.h)));
-  if (scale > limit) {
-    const capped = Math.min(limit, Math.sqrt(32_000_000 / (out.w * out.h)));
-    if (capped < scale) {
-      toast(`Diagramma troppo grande: PNG ridotto a ${capped}×`);
-      scale = capped;
-    }
-  }
-
-  const url = URL.createObjectURL(new Blob([out.text], { type: 'image/svg+xml' }));
   try {
-    const img = new Image();
-    img.decoding = 'sync';
-    await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = url; });
-
-    const c = document.createElement('canvas');
-    c.width = Math.round(out.w * scale);
-    c.height = Math.round(out.h * scale);
-    const ctx = c.getContext('2d');
-    ctx.fillStyle = isDark() ? '#14171c' : '#ffffff';
-    ctx.fillRect(0, 0, c.width, c.height);
-    ctx.drawImage(img, 0, 0, c.width, c.height);
-    const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+    const out = await rasterSource();
+    if (!out) throw new Error('PNG non disponibile per questo diagramma: usa SVG');
+    const image = await rasterize(out, scale);
+    const blob = await new Promise(resolve => image.toBlob(resolve, 'image/png'));
     if (!blob) throw new Error('Canvas vuoto');
     download(blob, 'png');
-  } catch {
-    toast('Export PNG non riuscito');
-  } finally {
-    URL.revokeObjectURL(url);
-  }
+  } catch (error) { toast(error.message || 'Export PNG non riuscito'); }
+}
+
+let exportingPDF = false;
+async function exportExtensionPDF() {
+  if (exportingPDF || !canvas.querySelector('svg')) return;
+  exportingPDF = true;
+  toast('Preparo il PDF…');
+  try {
+    const out = await rasterSource();
+    if (!out) throw new Error('PDF non disponibile per queste etichette Mermaid: usa SVG o il motore Pele');
+    const { createPDF } = await import('./export-pdf.js');
+    download(await createPDF(out), 'pdf');
+  } catch (error) { toast(error.message || 'Export PDF non riuscito'); }
+  finally { exportingPDF = false; }
 }
 
 /** PDF vettoriale passando dalla stampa del browser (“Salva come PDF”). */
 function exportPDF() {
+  if (vscode) { void exportExtensionPDF(); return; }
   const out = exportSvgString();
   if (!out) return;
   const w = window.open('', '_blank');
@@ -607,7 +591,6 @@ const path = new URLSearchParams(location.search).get('path');
 if (vscode) {
   new MutationObserver(() => { if (state.theme === 'auto') { applyChrome(); render(); } })
     .observe(document.body, { attributes: true, attributeFilter: ['class'] });
-  document.querySelector('[data-export="pdf"]').hidden = true;
   let defaults;
   addEventListener('message', ({ data }) => {
     if (data?.type !== 'document' || typeof data.text !== 'string') return;
