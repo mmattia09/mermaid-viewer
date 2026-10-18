@@ -55,6 +55,8 @@ body { display: flex; flex-direction: column; }
 .document-info, .document-actions, .render-controls, .view-controls { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .document-info { flex: 1; }
 .document-actions, .view-controls, .render-controls { flex: none; }
+.document-actions { position: relative; }
+.document-actions > .menu:first-child { position: static; }
 .document-icon { display: flex; color: var(--dim); flex: none; }
 .document-icon svg { width: 18px; height: 18px; }
 .file { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); }

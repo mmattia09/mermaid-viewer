@@ -7,6 +7,9 @@ exports.run = async () => {
   await extension.activate();
   assert.ok((await vscode.commands.getCommands()).includes('mermaidViewer.openPreview'));
   const doc = await vscode.workspace.openTextDocument(path.resolve(__dirname, 'fixtures/flow.mmd'));
+  assert.equal(doc.languageId, 'mermaid', 'File is recognized as Mermaid');
+  assert.ok(extension.packageJSON.contributes.grammars.some(g => g.language === 'mermaid'));
+  assert.ok(extension.packageJSON.contributes.languages[0].icon.dark);
   await vscode.window.showTextDocument(doc);
   await vscode.commands.executeCommand('mermaidViewer.openPreview', doc.uri);
   await new Promise(resolve => setTimeout(resolve, 2000));

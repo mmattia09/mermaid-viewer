@@ -208,7 +208,6 @@ addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { picker.hidden = true; closeMenus(true); return; }
   if (e.target.matches('input, select, textarea')) return;
   if (!vscode && (e.metaKey || e.ctrlKey) && e.key === 'o') { e.preventDefault(); openPicker(); return; }
-  if (e.key === 'Escape') { picker.hidden = true; closeMenus(true); return; }
   if (!picker.hidden || e.metaKey || e.ctrlKey) return;
   const k = e.key;
   if (k === '+' || k === '=') centerZoom(1.2);

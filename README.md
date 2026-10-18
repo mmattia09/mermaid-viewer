@@ -3,6 +3,24 @@
 Anteprima live dei file `.mmd` e `.mermaid`, nel browser e a lato dell’editor
 VS Code. Interfaccia in italiano, pan/zoom, temi ed esportazione locale.
 
+
+## Anteprima dell’interfaccia
+
+VS Code: sorgente con syntax highlighting e icona Mermaid, anteprima affiancata
+senza margini laterali. La barra separa i comandi del file dai controlli del diagramma.
+
+![Syntax highlighting e anteprima affiancata in VS Code](docs/images/vscode-preview.png)
+
+App browser con tema **Oceano**:
+
+![Anteprima browser con tema Oceano](docs/images/preview-ocean.png)
+
+Interfaccia della webview con tema **Prugna**, verificata in un pannello da 420 px:
+
+<img src="docs/images/webview-plum.png" alt="Webview compatta con tema Prugna e layout verticale responsive" width="420">
+
+Gli screenshot usano [il diagramma di esempio](examples/anteprima.mmd).
+
 ## Estensione VS Code
 
 1. Installa il pacchetto `artifacts/mermaid-viewer.vsix` con **Extensions → … →
@@ -12,6 +30,11 @@ VS Code. Interfaccia in italiano, pan/zoom, temi ed esportazione locale.
    **Mermaid Viewer: Apri anteprima a lato** dalla palette comandi.
    È disponibile anche nel menu contestuale dell’Explorer.
 4. Scorciatoia: `Cmd+K V` su macOS, `Ctrl+K V` su Windows/Linux.
+
+I file `.mmd` e `.mermaid` hanno una grammatica TextMate con evidenziazione di
+parole chiave, commenti, frecce, stringhe e colori, oltre a completamento delle
+parentesi e commenti `%%`. L’icona Mermaid ha varianti per temi chiari e scuri;
+un tema icone che associa esplicitamente questi file può sostituirla.
 
 L’anteprima segue anche le modifiche non salvate, con debounce di 100 ms. Ogni
 file ha il proprio pannello: richiamare il comando riutilizza quello esistente.
@@ -28,7 +51,10 @@ predefiniti per le nuove anteprime sono configurabili nelle impostazioni:
 }
 ```
 
-Il tema automatico segue VS Code. SVG, PNG e PDF aprono la finestra di salvataggio nativa. Il PDF viene generato
+Il tema automatico segue VS Code. La webview occupa tutta la larghezza del pannello,
+senza il padding laterale predefinito. Il pulsante Apri, il selettore di file e il
+trascinamento sono disabilitati nella webview: apri i documenti dall’editor o da Explorer.
+Tema e Markdown sono nel menu **Opzioni anteprima**, accanto a **Esporta**. SVG, PNG e PDF aprono la finestra di salvataggio nativa. Il PDF viene generato
 localmente a richiesta, senza browser esterni o servizi online.
 
 ## App browser
@@ -67,7 +93,11 @@ Entrambi lavorano localmente: il sorgente non viene inviato a servizi esterni.
 | Pele | Adatta il layout allo spazio: può avvolgere etichette e cambiare direzione | Mantiene direzione e dimensioni naturali |
 | Mermaid | Mantiene il layout Mermaid e adatta lo zoom al pannello | Dimensioni naturali, zoom iniziale al 100% |
 
-Il ridimensionamento automatico usa un debounce di 120 ms. In modalità fissa
+Cambiare Responsive ricentra sempre il diagramma: attivandolo adatta l’inquadratura,
+disattivandolo centra alle dimensioni naturali (100%). Il ridimensionamento adatta
+il layout Pele con un debounce di 120 ms soltanto quando cambia la larghezza.
+Cambiare solo l’altezza o ridimensionare in modalità fissa non ricrea l’SVG.
+Dopo pan o zoom manuali viene conservato il punto al centro della vista. In modalità fissa
 puoi comunque usare zoom e **Adatta** manualmente. Cambiare motore o modalità
 ricalcola l’inquadratura; le modifiche al file conservano la vista corrente.
 
@@ -78,7 +108,9 @@ per confrontare la resa. Non viene effettuato un cambio di motore silenzioso in
 caso di errore. Vedi [compatibilità Pele](https://pele.run/compatibility) e
 [note di ricerca](docs/pele.md).
 
-Cinque temi: automatico, chiaro, scuro, neutro e forest. L’opzione **Markdown**
+Nove temi nel menu **Opzioni anteprima**: automatico, chiaro, scuro, neutro,
+forest, **Oceano**, **Prugna**, **Sabbia** e **Grafite**. I quattro temi aggiuntivi
+colorano sia l’interfaccia sia il diagramma con entrambi i motori. L’opzione **Markdown**
 converte le etichette con grassetto/corsivo/codice nel formato delle markdown
 string senza modificare il file originale. Le preferenze del browser sono salvate
 in localStorage. I link e le immagini nei diagrammi sono disabilitati.
@@ -103,7 +135,7 @@ in localStorage. I link e le immagini nei diagrammi sono disabilitati.
 | `+`, `−` | Zoom |
 | `0`, pulsante percentuale | 100% |
 | `F`, doppio clic, Adatta | Adatta alla finestra |
-| Cmd/Ctrl + O | Apri file |
+| Cmd/Ctrl + O | Apri file (solo browser) |
 
 Un sorgente vuoto cancella l’anteprima. Un errore mantiene l’ultimo diagramma
 valido e mostra il messaggio come testo. Il limite del sorgente è 50.000 caratteri.
