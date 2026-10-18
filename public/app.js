@@ -3,9 +3,11 @@
 import { prepareMarkdown } from './md-labels.js';
 import { renderDiagram } from './renderers.js';
 import { rasterize } from './export-image.js';
+import { themes } from './themes.js';
 
 const vscode = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : null;
 const saved = vscode?.getState() || {};
+if (vscode) document.documentElement.dataset.host = 'vscode';
 const storage = {
   getItem(key) { try { return vscode ? saved[key] ?? null : localStorage.getItem(key); } catch { return null; } },
   setItem(key, value) { try { if (vscode) { saved[key] = String(value); vscode.setState(saved); } else localStorage.setItem(key, value); } catch {} },
@@ -25,6 +27,7 @@ const state = {
   svg: '',
   /** pan/zoom corrente; va preservato tra un reload e l'altro */
   view: { x: 0, y: 0, k: 1 },
+  framing: 'fit',
   fresh: true,      // true finché non abbiamo fatto il primo "adatta"
   markdown: true,
   theme: 'auto',
@@ -37,9 +40,10 @@ const state = {
 
 const prefersDark = matchMedia('(prefers-color-scheme: dark)');
 const isDark = () =>
-  state.theme === 'dark' || (state.theme === 'auto' && (vscode ? document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast') : prefersDark.matches));
+  themes[state.theme]?.dark || state.theme === 'dark' || (state.theme === 'auto' && (vscode ? document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast') : prefersDark.matches));
 
 function mermaidTheme() {
+  if (themes[state.theme]) return isDark() ? 'dark' : 'default';
   if (state.theme === 'auto') return isDark() ? 'dark' : 'default';
   return state.theme;
 }
@@ -47,6 +51,11 @@ function mermaidTheme() {
 function applyChrome() {
   document.documentElement.dataset.theme = isDark() ? 'dark' : 'light';
   document.documentElement.dataset.palette = state.theme;
+  const palette = themes[state.theme];
+  for (const [key, token] of Object.entries({ bg: 'bg', bar: 'bar', fg: 'fg', dim: 'dim', line: 'line', accent: 'accent', btn: 'btn', hover: 'btn-h', grid: 'grid' })) {
+    if (palette) document.body.style.setProperty(`--${token}`, palette[key]);
+    else document.body.style.removeProperty(`--${token}`);
+  }
 }
 
 /* --------------------------------------------------- markdown nelle celle */
@@ -64,7 +73,7 @@ async function render() {
   try {
     const { svg } = await renderDiagram(prepare(state.source), {
       engine: state.engine, responsive: state.responsive,
-      width: Math.max(1, stage.clientWidth - 80), theme: mermaidTheme(),
+      width: Math.max(1, stage.clientWidth - 80), theme: mermaidTheme(), palette: state.theme,
     });
     if (seq !== state.seq) return;
     state.svg = svg;
@@ -82,8 +91,8 @@ async function render() {
     errBox.hidden = true;
     $('#drop').classList.add('hide');
     if (state.fresh) {
-      if (state.responsive) fit();
-      else { state.view = { x: 40, y: 40, k: 1 }; applyView(); }
+      if (state.framing === 'actual') centerActual();
+      else fit();
       state.fresh = false;
     } else applyView();
   } catch (e) {
@@ -126,7 +135,20 @@ function svgSize() {
   return { w: vb.width || el.clientWidth, h: vb.height || el.clientHeight };
 }
 
-function fit(pad = 40) {
+function centerActual() {
+  state.framing = 'actual';
+  centerDiagram(1);
+}
+
+function centerDiagram(scale) {
+  const s = svgSize();
+  if (!s) return;
+  state.view = { k: scale, x: (stage.clientWidth - s.w * scale) / 2, y: (stage.clientHeight - s.h * scale) / 2 };
+  applyView();
+}
+
+function fit(pad = Math.min(40, stage.clientWidth * 0.07)) {
+  state.framing = 'fit';
   const s = svgSize();
   if (!s) return;
   const k = Math.min((stage.clientWidth - pad * 2) / s.w, (stage.clientHeight - pad * 2) / s.h);
@@ -138,6 +160,7 @@ function fit(pad = 40) {
 
 /** Zoom centrato su un punto dello schermo: il punto resta fermo. */
 function zoomAt(cx, cy, factor) {
+  state.framing = 'manual';
   const { x, y, k } = state.view;
   const nk = Math.max(0.001, Math.min(1000, k * factor));
   state.view.k = nk;
@@ -155,6 +178,7 @@ stage.addEventListener('wheel', (e) => {
   if (e.ctrlKey || e.metaKey) {
     zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.01));
   } else {
+    state.framing = 'manual';
     state.view.x -= e.deltaX;
     state.view.y -= e.deltaY;
     applyView();
@@ -170,6 +194,7 @@ stage.addEventListener('pointerdown', (e) => {
 });
 stage.addEventListener('pointermove', (e) => {
   if (!drag) return;
+  state.framing = 'manual';
   state.view.x = drag.x + (e.clientX - drag.px);
   state.view.y = drag.y + (e.clientY - drag.py);
   applyView();
@@ -180,14 +205,15 @@ stage.addEventListener('pointercancel', endDrag);
 stage.addEventListener('dblclick', () => fit());
 
 addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { picker.hidden = true; closeMenus(true); return; }
   if (e.target.matches('input, select, textarea')) return;
-  if ((e.metaKey || e.ctrlKey) && e.key === 'o') { e.preventDefault(); openPicker(); return; }
-  if (e.key === 'Escape') { picker.hidden = true; return; }
+  if (!vscode && (e.metaKey || e.ctrlKey) && e.key === 'o') { e.preventDefault(); openPicker(); return; }
+  if (e.key === 'Escape') { picker.hidden = true; closeMenus(true); return; }
   if (!picker.hidden || e.metaKey || e.ctrlKey) return;
   const k = e.key;
   if (k === '+' || k === '=') centerZoom(1.2);
   else if (k === '-' || k === '_') centerZoom(1 / 1.2);
-  else if (k === '0') { state.view.k = 1; applyView(); }
+  else if (k === '0') centerActual();
   else if (k === 'f' || k === 'F') fit();
 });
 
@@ -370,7 +396,7 @@ async function loadDir(dir) {
 }
 
 function openPicker() {
-  if (vscode) { vscode.postMessage({ type: 'open' }); return; }
+  if (vscode) return;
   picker.hidden = false;
   drawRecents();
   loadDir(storage.getItem('mv-dir') || '').catch(e => { listing.textContent = e.message; });   // vuoto = prima radice
@@ -379,7 +405,7 @@ function openPicker() {
 $('#pickerClose').onclick = () => { picker.hidden = true; };
 picker.onclick = (e) => { if (e.target === picker) picker.hidden = true; };
 
-stage.addEventListener('dragover', (e) => { e.preventDefault(); stage.classList.add('dragover'); });
+stage.addEventListener('dragover', (e) => { e.preventDefault(); if (!vscode) stage.classList.add('dragover'); });
 stage.addEventListener('dragleave', () => stage.classList.remove('dragover'));
 stage.addEventListener('drop', async (e) => {
   e.preventDefault();
@@ -421,7 +447,7 @@ function selfContained(el) {
   const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
   bg.setAttribute('width', '100%');
   bg.setAttribute('height', '100%');
-  bg.setAttribute('fill', isDark() ? '#14171c' : '#ffffff');
+  bg.setAttribute('fill', style.getPropertyValue('--bg').trim());
   clone.insertBefore(bg, clone.firstChild);
 
   return { text: new XMLSerializer().serializeToString(clone), w, h };
@@ -440,7 +466,7 @@ async function rasterSource() {
   if (state.engine === 'pele') return exportSvgString();
   for (const src of [prepare(state.source), state.source]) {
     try {
-      const { svg } = await renderDiagram(src, { engine: 'mermaid', theme: mermaidTheme(), raster: true });
+      const { svg } = await renderDiagram(src, { engine: 'mermaid', theme: mermaidTheme(), palette: state.theme, raster: true });
       if (/<foreignObject/.test(svg)) continue;
       const host = document.createElement('div');
       host.style.cssText = 'position:fixed;left:-99999px;top:0';
@@ -527,7 +553,7 @@ function exportPDF() {
 
 $('#open').onclick = openPicker;
 $('#fit').onclick = () => fit();
-zoomLabel.onclick = () => { state.view.k = 1; applyView(); };
+zoomLabel.onclick = centerActual;
 document.querySelectorAll('[data-zoom]').forEach((b) => {
   b.onclick = () => centerZoom(b.dataset.zoom === 'in' ? 1.2 : 1 / 1.2);
 });
@@ -535,10 +561,12 @@ document.querySelectorAll('[data-zoom]').forEach((b) => {
 $('#md').onchange = (e) => { state.markdown = e.target.checked; storage.setItem('mv-markdown', state.markdown); render(); };
 $('#engine').onchange = (e) => {
   state.engine = e.target.value; storage.setItem('mv-engine', state.engine);
+  state.framing = state.responsive ? 'fit' : 'actual';
   state.fresh = true; render();
 };
 $('#responsive').onchange = (e) => {
   state.responsive = e.target.checked; storage.setItem('mv-responsive', state.responsive);
+  state.framing = state.responsive ? 'fit' : 'actual';
   state.fresh = true; render();
 };
 
@@ -551,12 +579,36 @@ themeSel.onchange = (e) => {
 };
 
 const menu = $('#exportMenu');
-$('#exportBtn').onclick = (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; };
-document.addEventListener('click', () => { menu.hidden = true; });
+const optionsMenu = $('#optionsMenu');
+const menus = [[menu, $('#exportBtn')], [optionsMenu, $('#optionsBtn')]];
+function closeMenus(restoreFocus = false) {
+  for (const [panel, button] of menus) {
+    if (!panel.hidden && restoreFocus) button.focus();
+    panel.hidden = true; button.setAttribute('aria-expanded', 'false');
+  }
+}
+for (const [panel, button] of menus) {
+  button.onclick = (e) => {
+    e.stopPropagation();
+    const opening = panel.hidden;
+    closeMenus();
+    panel.hidden = !opening; button.setAttribute('aria-expanded', String(opening));
+    if (opening) panel.querySelector('button, select, input')?.focus();
+  };
+  panel.addEventListener('click', e => e.stopPropagation());
+}
+document.addEventListener('click', () => closeMenus());
+document.addEventListener('focusin', e => {
+  for (const [panel, button] of menus) {
+    if (!panel.hidden && !panel.contains(e.target) && e.target !== button) {
+      panel.hidden = true; button.setAttribute('aria-expanded', 'false');
+    }
+  }
+});
 menu.onclick = (e) => {
-  const what = e.target.dataset?.export;
+  const what = e.target.closest('[data-export]')?.dataset.export;
   if (!what) return;
-  menu.hidden = true;
+  closeMenus(true);
   if (what === 'svg') exportSVG();
   else if (what === 'pdf') exportPDF();
   else exportPNG(Number(what.split('@')[1]));
@@ -566,12 +618,26 @@ prefersDark.addEventListener('change', () => {
   if (state.theme === 'auto') { applyChrome(); render(); }
 });
 let resizeTimer;
+let stageWidth = stage.clientWidth, stageHeight = stage.clientHeight;
 new ResizeObserver(() => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => {
-    if (!state.responsive) return;
-    state.fresh = true; render();
-  }, 120);
+  const width = stage.clientWidth, height = stage.clientHeight;
+  if (!width || !height) return;
+  const widthChanged = width !== stageWidth;
+  const heightChanged = height !== stageHeight;
+  if (!widthChanged && !heightChanged) return;
+  // Preserve the point under the viewport center while the editor divider moves.
+  state.view.x += (width - stageWidth) / 2;
+  state.view.y += (height - stageHeight) / 2;
+  stageWidth = width; stageHeight = height;
+  applyView();
+  if (widthChanged && state.responsive && state.engine === 'pele') {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      state.fresh = state.framing !== 'manual';
+      render();
+    }, 120);
+  } else if (state.framing === 'fit') fit();
+  else if (state.framing === 'actual') centerActual();
 }).observe(stage);
 
 /* ------------------------------------------------------------------ boot */
@@ -580,6 +646,7 @@ state.theme = storage.getItem('mv-theme') || 'auto';
 state.engine = storage.getItem('mv-engine') === 'mermaid' ? 'mermaid' : 'pele';
 state.responsive = storage.getItem('mv-responsive') !== 'false';
 state.markdown = storage.getItem('mv-markdown') !== 'false';
+state.framing = state.responsive ? 'fit' : 'actual';
 $('#engine').value = state.engine;
 $('#responsive').checked = state.responsive;
 $('#md').checked = state.markdown;
@@ -589,6 +656,7 @@ applyView();
 
 const path = new URLSearchParams(location.search).get('path');
 if (vscode) {
+  $('#drop').innerHTML = '<p>Il diagramma apparirà qui</p><p class="small">Scrivi nel file aperto a lato per aggiornare l’anteprima.</p>';
   new MutationObserver(() => { if (state.theme === 'auto') { applyChrome(); render(); } })
     .observe(document.body, { attributes: true, attributeFilter: ['class'] });
   let defaults;
@@ -599,6 +667,7 @@ if (vscode) {
       const initial = defaults === undefined;
       state.engine = initial && storage.getItem('mv-engine') ? state.engine : data.settings.engine;
       state.responsive = initial && storage.getItem('mv-responsive') !== null ? state.responsive : data.settings.responsive;
+      state.framing = state.responsive ? 'fit' : 'actual'; state.fresh = true;
       $('#engine').value = state.engine; $('#responsive').checked = state.responsive;
       defaults = nextDefaults;
     }

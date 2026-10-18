@@ -1,3 +1,4 @@
+import { mermaidColors } from './themes.js';
 let pele;
 let mermaid;
 let queue = Promise.resolve();
@@ -20,7 +21,7 @@ function loadMermaid() {
   });
 }
 
-export async function renderDiagram(source, { engine = 'pele', responsive = true, width, theme = 'default', raster = false } = {}) {
+export async function renderDiagram(source, { engine = 'pele', responsive = true, width, theme = 'default', palette, raster = false } = {}) {
   if (source.length > 50000) throw new Error('Il diagramma supera il limite di 50.000 caratteri');
   if (engine === 'pele') {
     const api = await (pele ??= import('./vendor/pele/lazy.js'));
@@ -34,7 +35,7 @@ export async function renderDiagram(source, { engine = 'pele', responsive = true
   const run = queue.then(async () => {
     const api = await loadMermaid();
     const id = `diagram${++nextId}`;
-    api.initialize({ ...baseConfig, theme, htmlLabels: !raster,
+    api.initialize({ ...baseConfig, theme: mermaidColors(palette) ? 'base' : theme, themeVariables: mermaidColors(palette), htmlLabels: !raster,
       flowchart: { ...baseConfig.flowchart, htmlLabels: !raster } });
     try { return await api.render(id, source); }
     finally { document.getElementById(id)?.remove(); }

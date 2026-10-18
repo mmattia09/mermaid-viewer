@@ -8,42 +8,55 @@
 </head>
 <body>
 
-<header class="bar">
-  <div class="group">
-    <button id="open" class="btn" title="Sfoglia i file (⌘O)">Apri…</button>
-    <span id="file" class="file" title="nessun file">nessun file</span>
-    <span id="live" class="dot" title="stato aggiornamento live"></span>
-  </div>
-
-  <div class="group center">
-    <button class="btn icon" data-zoom="out" title="Zoom indietro (−)">−</button>
-    <button id="zoomLabel" class="btn wide" title="Ripristina zoom 100% (0)">100%</button>
-    <button class="btn icon" data-zoom="in" title="Zoom avanti (+)">+</button>
-    <button class="btn" id="fit" title="Adatta alla finestra (F)">Adatta</button>
-  </div>
-
-  <div class="group right">
-    <select id="engine" class="btn" aria-label="Motore di rendering"><option value="pele">Pele</option><option value="mermaid">Mermaid</option></select>
-    <label class="chk" title="Adatta il diagramma alla larghezza disponibile"><input type="checkbox" id="responsive" checked> Responsive</label>
-    <label class="chk" title="Interpreta **grassetto**, *corsivo* e `codice` dentro le celle">
-      <input type="checkbox" id="md" checked> Markdown
-    </label>
-    <select id="theme" class="btn" title="Tema del diagramma">
-      <option value="auto">Tema: auto</option>
-      <option value="default">Chiaro</option>
-      <option value="dark">Scuro</option>
-      <option value="neutral">Neutro</option>
-      <option value="forest">Forest</option>
-    </select>
-    <div class="menu">
-      <button class="btn" id="exportBtn" title="Esporta">Esporta ▾</button>
-      <div class="dropdown" id="exportMenu" hidden>
-        <button data-export="svg">SVG</button>
-        <button data-export="png@1">PNG 1×</button>
-        <button data-export="png@2">PNG 2×</button>
-        <button data-export="png@4">PNG 4×</button>
-        <button data-export="pdf">PDF</button>
+<header class="bar" aria-label="Comandi anteprima">
+  <div class="document-row">
+    <div class="document-info">
+      <button id="open" class="btn" data-browser-only title="Sfoglia i file (⌘O)">Apri…</button>
+      <span class="document-icon"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="8" height="5" rx="1"/><path d="M12 8v5M5 16v-3h14v3"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/></svg></span>
+      <span id="file" class="file" title="nessun file">Nessun diagramma</span>
+      <span id="live" class="dot" title="Stato aggiornamento live" aria-label="Stato aggiornamento live"></span>
+    </div>
+    <div class="document-actions">
+      <div class="menu">
+        <button class="btn icon" id="optionsBtn" title="Opzioni anteprima" aria-label="Opzioni anteprima" aria-expanded="false" aria-controls="optionsMenu"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="var(--bar)"/><circle cx="15" cy="17" r="3" fill="var(--bar)"/></svg></button>
+        <div id="optionsMenu" class="dropdown options" hidden>
+          <label class="option-field" for="theme">Tema del diagramma
+            <select id="theme" class="btn">
+              <option value="auto">Automatico</option><option value="default">Chiaro</option>
+              <option value="dark">Scuro</option><option value="neutral">Neutro</option><option value="forest">Forest</option>
+              <option value="ocean">Oceano</option><option value="plum">Prugna</option>
+              <option value="sand">Sabbia</option><option value="graphite">Grafite</option>
+            </select>
+          </label>
+          <label class="chk option-check"><input type="checkbox" id="md" checked> Markdown nelle etichette</label>
+        </div>
       </div>
+      <div class="menu">
+        <button class="btn export" id="exportBtn" aria-expanded="false" aria-controls="exportMenu"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4"/></svg><span>Esporta</span><span class="chevron">⌄</span></button>
+        <div class="dropdown" id="exportMenu" hidden>
+          <button data-export="svg">SVG <span>Vettoriale</span></button>
+          <button data-export="png@1">PNG <span>1×</span></button>
+          <button data-export="png@2">PNG <span>2×</span></button>
+          <button data-export="png@4">PNG <span>4×</span></button>
+          <button data-export="pdf">PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="controls-row">
+    <div class="render-controls">
+      <select id="engine" class="btn engine" aria-label="Motore di rendering" title="Motore di rendering"><option value="pele">Pele</option><option value="mermaid">Mermaid</option></select>
+      <label class="responsive-toggle" title="Adatta il layout alla larghezza del pannello">
+        <input type="checkbox" role="switch" id="responsive" checked><span class="switch-track" aria-hidden="true"></span><span>Responsive</span>
+      </label>
+    </div>
+    <div class="view-controls" role="group" aria-label="Zoom e inquadratura">
+      <div class="zoom-controls">
+        <button class="btn icon" data-zoom="out" title="Zoom indietro (−)" aria-label="Riduci zoom">−</button>
+        <button id="zoomLabel" class="btn wide" title="Centra al 100% (0)">100%</button>
+        <button class="btn icon" data-zoom="in" title="Zoom avanti (+)" aria-label="Aumenta zoom">+</button>
+      </div>
+      <button class="btn icon" id="fit" title="Adatta e centra (F)" aria-label="Adatta e centra"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg></button>
     </div>
   </div>
 </header>
@@ -68,8 +81,8 @@
   </div>
 </div>
 
-<div id="err" class="err" hidden></div>
-<div id="toast" class="toast" hidden></div>
+<div id="err" class="err" role="alert" hidden></div>
+<div id="toast" class="toast" role="status" hidden></div>
 
 
 <script src="/app.js" type="module"></script>

@@ -32,6 +32,8 @@
 
 html, body {
   margin: 0;
+  padding: 0 !important;
+  width: 100%;
   height: 100%;
   overflow: hidden;
   background: var(--bg);
@@ -39,52 +41,69 @@ html, body {
   font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
 }
 
-/* ---------- barra ---------- */
+/* A document strip and a stable control strip, even in a narrow editor group. */
+body { display: flex; flex-direction: column; }
 .bar {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  height: 44px;
-  padding: 0 10px;
-  background: var(--bar);
-  border-bottom: 1px solid var(--line);
-  user-select: none;
-  position: relative;
-  z-index: 5;
+  flex: none; background: var(--bar); border-bottom: 1px solid var(--line);
+  user-select: none; position: relative; z-index: 5;
+  font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+  font-size: 12px;
 }
-
-.group { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.group.center { margin: 0 auto; }
-.group.right { margin-left: auto; }
-
+.document-row, .controls-row { display: flex; align-items: center; justify-content: space-between; min-width: 0; gap: 12px; padding: 7px 12px; }
+.document-row { min-height: 39px; }
+.controls-row { border-top: 1px solid var(--line); min-height: 43px; }
+.document-info, .document-actions, .render-controls, .view-controls { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.document-info { flex: 1; }
+.document-actions, .view-controls, .render-controls { flex: none; }
+.document-icon { display: flex; color: var(--dim); flex: none; }
+.document-icon svg { width: 18px; height: 18px; }
+.file { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); }
+.file.loaded { color: var(--fg); font-weight: 500; }
 .btn {
-  appearance: none;
-  border: 1px solid var(--line);
-  background: var(--btn);
-  color: var(--fg);
-  border-radius: 7px;
-  padding: 5px 10px;
-  font: inherit;
-  cursor: pointer;
-  white-space: nowrap;
+  appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: 1px solid transparent; background: transparent; color: var(--fg);
+  border-radius: 5px; height: 28px; padding: 0 8px; font: inherit; cursor: pointer; white-space: nowrap;
 }
 .btn:hover { background: var(--btn-h); }
-.btn:active { transform: translateY(.5px); }
-.btn.icon { width: 30px; padding: 5px 0; text-align: center; font-size: 15px; }
-.btn.wide { min-width: 66px; font-variant-numeric: tabular-nums; }
-select.btn { padding-right: 6px; }
-
-.chk { display: flex; align-items: center; gap: 5px; color: var(--dim); cursor: pointer; }
-.chk input { margin: 0; cursor: pointer; }
-
-.file {
-  color: var(--dim);
-  max-width: 30vw;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.btn:active { background: var(--line); }
+.btn svg { width: 16px; height: 16px; flex: none; }
+.btn.icon { width: 28px; padding: 0; font-size: 16px; }
+.btn.wide { min-width: 52px; padding: 0 3px; font-variant-numeric: tabular-nums; font-size: 11px; }
+select.btn { appearance: auto; background: var(--btn); border-color: var(--line); padding: 0 6px; }
+.engine { width: 86px; }
+.zoom-controls { display: flex; align-items: center; background: var(--btn); border: 1px solid var(--line); border-radius: 6px; }
+.zoom-controls .btn { height: 26px; }
+.export { border-color: var(--line); background: var(--btn); }
+.chevron { color: var(--dim); }
+.responsive-toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--dim); position: relative; white-space: nowrap; }
+.responsive-toggle input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.switch-track { width: 25px; height: 14px; border: 1px solid var(--dim); border-radius: 12px; position: relative; flex: none; }
+.switch-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 8px; height: 8px; background: var(--dim); border-radius: 50%; }
+.responsive-toggle input:checked ~ span { color: var(--fg); }
+.responsive-toggle input:checked + .switch-track { background: var(--accent); border-color: var(--accent); }
+.responsive-toggle input:checked + .switch-track::after { left: 13px; background: #fff; }
+.responsive-toggle input:focus-visible + .switch-track { outline: 2px solid var(--accent); outline-offset: 3px; }
+.chk { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.chk input { margin: 0; accent-color: var(--accent); }
+[data-host="vscode"] [data-browser-only] { display: none !important; }
+:root[data-host="vscode"][data-palette="auto"] body {
+  --bg: var(--vscode-editor-background, #1e1e1e);
+  --fg: var(--vscode-editor-foreground, #cccccc);
+  --bar: var(--vscode-sideBar-background, #252526);
+  --btn: var(--vscode-dropdown-background, #313131);
+  --btn-h: var(--vscode-toolbar-hoverBackground, #383838);
+  --line: var(--vscode-widget-border, #454545);
+  --dim: var(--vscode-descriptionForeground, #a0a0a0);
+  --accent: var(--vscode-focusBorder, #007fd4);
+  --grid: color-mix(in srgb, var(--fg) 6%, var(--bg));
 }
-.file.loaded { color: var(--fg); }
+@media (max-width: 380px) {
+  .document-row, .controls-row { padding-inline: 8px; gap: 6px; }
+  .render-controls, .view-controls { gap: 5px; }
+  .engine { width: 76px; }
+  .controls-row { flex-wrap: wrap; }
+  .view-controls { margin-left: auto; }
+}
 
 .dot {
   width: 8px; height: 8px; border-radius: 50%;
@@ -123,14 +142,23 @@ select.btn { padding-right: 6px; }
   border-radius: 6px;
   cursor: pointer;
 }
+.dropdown button span { color: var(--dim); margin-left: auto; font-size: 11px; }
+.dropdown button { display: flex; gap: 18px; }
+.options { width: 226px; padding: 14px; gap: 16px; }
+.option-field { display: flex; flex-direction: column; gap: 8px; }
+.option-field select { width: 100%; }
+.option-check { font-size: 12px; }
 .dropdown button:hover { background: var(--btn-h); }
 /* serve perché .dropdown{display:flex} vincerebbe sull'attributo [hidden] */
 .dropdown[hidden] { display: none; }
 
 /* ---------- palco ---------- */
 .stage {
-  position: absolute;
-  inset: 44px 0 0 0;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  touch-action: none;
   overflow: hidden;
   cursor: grab;
   outline: none;
@@ -326,11 +354,6 @@ select.btn { padding-right: 6px; }
   .canvas { transform: none !important; position: static; }
 }
 
-/* The same responsive toolbar is used in narrow VS Code editor groups. */
-body { display: flex; flex-direction: column; }
-.bar { height: auto; min-height: 44px; flex-wrap: wrap; padding: 7px 10px; gap: 8px 14px; flex: none; }
-.stage { position: relative; inset: auto; flex: 1; min-height: 0; touch-action: none; }
-.group.right { flex-wrap: wrap; }
 .canvas {
   --pele-bg: var(--bg); --pele-fg: var(--fg); --pele-muted: var(--dim);
   --pele-line: var(--fg); --pele-surface: var(--bar); --pele-surface-alt: var(--btn-h);
@@ -341,8 +364,5 @@ body { display: flex; flex-direction: column; }
 :root[data-palette="forest"] .canvas { --pele-surface: #e4f0df; --pele-surface-alt: #cddfc6; --pele-border: #54794b; --pele-line: #355431; --pele-fg: #243c21; }
 :root[data-palette="neutral"] .canvas { --pele-surface: #eee; --pele-surface-alt: #ddd; --pele-border: #777; --pele-line: #444; --pele-fg: #222; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-@media (max-width: 600px) {
-  .group.right { width: 100%; margin: 0; }
-  .group.center { margin-left: auto; margin-right: 0; }
-  .file { max-width: 38vw; }
-}
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

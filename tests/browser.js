@@ -7,7 +7,7 @@
     throw new Error('Timed out waiting for preview');
   };
   const frame = document.createElement('iframe');
-  frame.style.cssText = 'width:420px;height:700px;position:fixed;inset:0;z-index:9999';
+  frame.style.cssText = 'border:0;width:420px;height:700px;position:fixed;inset:0;z-index:9999';
   const html = await (await fetch('/index.html')).text();
   const source = 'flowchart LR\n A[Start] --> B[Next] --> C[More] --> D[Finish]';
   const messages = [];
@@ -17,7 +17,7 @@
     if (event.data.type === 'ready') frame.contentWindow.postMessage({type:'document', text:source, name:'test.mmd', settings:{engine:'pele',responsive:true}}, '*');
   };
   window.addEventListener('message', listener);
-  frame.srcdoc = html.replace('<head>', `<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'nonce-test'; style-src 'self' 'unsafe-inline'; img-src blob: data:; connect-src 'none';"><script nonce="test">window.acquireVsCodeApi=()=>({getState:()=>({}),setState:()=>{},postMessage:m=>parent.postMessage(m,'*')});</script>`);
+  frame.srcdoc = html.replace('<head>', `<head><style>body { padding: 0 20px; }</style><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'nonce-test'; style-src 'self' 'unsafe-inline'; img-src blob: data:; connect-src 'none';"><script nonce="test">window.acquireVsCodeApi=()=>({getState:()=>({}),setState:()=>{},postMessage:m=>parent.postMessage(m,'*')});</script>`);
   document.body.append(frame);
   try {
     await wait(() => frame.contentDocument.querySelector('#canvas svg'));
@@ -25,11 +25,43 @@
     const svg = () => doc.querySelector('#canvas svg');
     assert(svg().textContent.includes('Start'), 'Webview ready handshake renders Pele under CSP');
     assert(!win.mermaid, 'Mermaid is not loaded for Pele');
+    assert(getComputedStyle(doc.querySelector('#open')).display === 'none', 'Open file is hidden in VS Code');
+    doc.querySelector('#open').click();
+    doc.body.dispatchEvent(new win.KeyboardEvent('keydown', {key:'o',ctrlKey:true,bubbles:true}));
+    assert(!messages.some(m => m.type === 'open'), 'Webview cannot request other files');
+    const stage = doc.querySelector('#stage');
+    assert(stage.getBoundingClientRect().left === 0 && stage.clientWidth === 420, 'Webview padding is removed edge to edge');
+    const centered = () => {
+      const a = svg().getBoundingClientRect(), b = stage.getBoundingClientRect();
+      return Math.abs(a.x + a.width / 2 - b.x - b.width / 2) < 1 && Math.abs(a.y + a.height / 2 - b.y - b.height / 2) < 1;
+    };
     assert(doc.body.scrollWidth <= 420, 'Toolbar fits a narrow side panel');
     assert(svg().viewBox.baseVal.height > svg().viewBox.baseVal.width, 'Responsive Pele adapts direction');
     doc.querySelector('#responsive').click();
     await wait(() => doc.querySelector('#zoomLabel').textContent === '100%' && svg().viewBox.baseVal.width > svg().viewBox.baseVal.height);
-    assert(true, 'Fixed mode preserves natural layout at 100%');
+    assert(centered(), 'Disabling responsive centers the natural-size diagram');
+    const fixedSVG = svg();
+    frame.style.width = '540px';
+    await wait(() => stage.clientWidth === 540 && centered());
+    assert(svg() === fixedSVG, 'Fixed-mode resize centers without rendering again');
+    doc.querySelector('#responsive').click();
+    await wait(() => svg() !== fixedSVG && centered());
+    assert(true, 'Enabling responsive recenters the diagram');
+    const responsiveSVG = svg();
+    frame.style.height = '600px';
+    await wait(() => stage.clientHeight < 550 && centered());
+    assert(svg() === responsiveSVG, 'Height-only resize does not rebuild the diagram');
+    doc.querySelector('[data-zoom="in"]').click();
+    const zoom = doc.querySelector('#zoomLabel').textContent;
+    frame.style.width = '420px';
+    await new Promise(r => setTimeout(r, 250));
+    assert(doc.querySelector('#zoomLabel').textContent === zoom, 'Manual zoom survives a responsive resize');
+    doc.querySelector('#responsive').click();
+    await wait(() => doc.querySelector('#zoomLabel').textContent === '100%' && centered());
+    doc.querySelector('#optionsBtn').click();
+    assert(!doc.querySelector('#optionsMenu').hidden, 'Options open from toolbar');
+    doc.querySelector('#theme').dispatchEvent(new win.KeyboardEvent('keydown', {key:'Escape',bubbles:true}));
+    assert(doc.querySelector('#optionsMenu').hidden && doc.activeElement.id === 'optionsBtn', 'Escape closes options and restores focus');
     doc.querySelector('[data-export="svg"]').click();
     doc.querySelector('[data-export="png@2"]').click();
     await wait(() => messages.some(m => m.type === 'export' && m.ext === 'png'));
@@ -51,6 +83,13 @@
     assert(true, 'Mermaid PNG export works under webview CSP');
     doc.querySelector('[data-export="pdf"]').click();
     await wait(() => messages.filter(m => m.ext === 'pdf').length === 2);
+    for (const palette of ['ocean', 'plum', 'sand', 'graphite']) {
+      const previous = svg();
+      const select = doc.querySelector('#theme'); select.value = palette;
+      select.dispatchEvent(new win.Event('change'));
+      await wait(() => svg() !== previous);
+      assert(doc.querySelector('#err').hidden, `Mermaid renders the ${palette} theme`);
+    }
     const pdfs = messages.filter(m => m.ext === 'pdf');
     assert(atob(pdfs[1].data).startsWith('%PDF-'), 'Mermaid PDF export produces a PDF under CSP');
     window.testPDFs = pdfs.map(m => m.data);

@@ -19,6 +19,7 @@ function activate(context) {
       const panel = vscode.window.createWebviewPanel('mermaidViewer.preview', `Anteprima: ${basename(uri.path)}`,
         { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
         { enableScripts: true, localResourceRoots: [publicRoot] });
+      panel.iconPath = { light: vscode.Uri.joinPath(context.extensionUri, 'icons/mermaid-light.svg'), dark: vscode.Uri.joinPath(context.extensionUri, 'icons/mermaid-dark.svg') };
       panels.set(key, panel);
       let timer;
       let disposed = false;
@@ -31,10 +32,6 @@ function activate(context) {
       const listeners = [
         panel.webview.onDidReceiveMessage(async message => {
           if (message?.type === 'ready') send();
-          if (message?.type === 'open') {
-            const files = await vscode.window.showOpenDialog({ canSelectMany: false, filters: { Mermaid: ['mmd', 'mermaid'] } });
-            if (files?.[0]) vscode.commands.executeCommand('mermaidViewer.openPreview', files[0]);
-          }
           if (message?.type === 'export' && ['svg', 'png', 'pdf'].includes(message.ext) && typeof message.data === 'string' && message.data.length <= 64_000_000) {
             try {
               const target = await vscode.window.showSaveDialog({
@@ -62,6 +59,7 @@ function activate(context) {
         const nonce = randomBytes(18).toString('base64');
         const resource = file => panel.webview.asWebviewUri(vscode.Uri.joinPath(publicRoot, file)).toString();
         html = html.replace(/(src|href)="\/([^\"]+)"/g, (_, attr, file) => `${attr}="${resource(file)}"`)
+          .replace('<html lang="it">', '<html lang="it" data-host="vscode">')
           .replace('<script ', `<script nonce="${nonce}" `)
           .replace('<head>', `<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src ${panel.webview.cspSource} 'nonce-${nonce}'; style-src ${panel.webview.cspSource} 'unsafe-inline'; img-src ${panel.webview.cspSource} blob: data:; font-src ${panel.webview.cspSource}; connect-src 'none';">`);
         panel.webview.html = html;
