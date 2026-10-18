@@ -19,9 +19,11 @@
     "jsdom": "^29.1.1",
     "jspdf": "^4.2.1",
     "mermaid": "^11.0.0",
-    "pele": "1.6.0"
+    "pele": "1.6.0",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
   },
-  "displayName": "Mermaid Viewer \u2014 Pele & Mermaid",
+  "displayName": "Mermaid Viewer — Pele & Mermaid",
   "publisher": "mmattia09",
   "license": "MIT",
   "main": "./extension/extension.cjs",
@@ -53,7 +55,12 @@
         "extensions": [
           ".mmd",
           ".mermaid"
-        ]
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/mermaid-light.svg",
+          "dark": "./icons/mermaid-dark.svg"
+        }
       }
     ],
     "menus": {
@@ -98,6 +105,13 @@
           "description": "Adatta il diagramma alla larghezza del pannello."
         }
       }
-    }
+    },
+    "grammars": [
+      {
+        "language": "mermaid",
+        "scopeName": "source.mermaid",
+        "path": "./syntaxes/mermaid.tmLanguage.json"
+      }
+    ]
   }
 }
