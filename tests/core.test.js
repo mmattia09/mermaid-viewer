@@ -51,3 +51,18 @@ test('watcher shares updates, survives atomic save and stops after disposal', as
     expect(b.at(-1)).toBe('third');
   } finally { stopA(); stopB(); await rm(dir, { recursive: true, force: true }); }
 });
+
+
+test('raster exports respect canvas limits including very large diagrams', async () => {
+  const { rasterDimensions } = await import('../public/export-image.js');
+  for (const [w, h] of [[100, 50], [50000, 20000], [100, 500000]]) {
+    const size = rasterDimensions(w, h, 2);
+    expect(size.width).toBeGreaterThan(0);
+    expect(size.height).toBeGreaterThan(0);
+    expect(size.width).toBeLessThanOrEqual(16384);
+    expect(size.height).toBeLessThanOrEqual(16384);
+    expect(size.width * size.height).toBeLessThanOrEqual(32_000_000);
+  }
+  expect(() => rasterDimensions(0, 20)).toThrow();
+  expect(() => rasterDimensions(NaN, 20)).toThrow();
+});

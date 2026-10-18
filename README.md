@@ -28,8 +28,8 @@ predefiniti per le nuove anteprime sono configurabili nelle impostazioni:
 }
 ```
 
-Il tema automatico segue VS Code. SVG e PNG aprono la finestra di salvataggio
-nativa. Il PDF è disponibile nell’app browser tramite stampa.
+Il tema automatico segue VS Code. SVG, PNG e PDF aprono la finestra di salvataggio nativa. Il PDF viene generato
+localmente a richiesta, senza browser esterni o servizi online.
 
 ## App browser
 
@@ -90,7 +90,11 @@ in localStorage. I link e le immagini nei diagrammi sono disabilitati.
   con etichette SVG. Alcune etichette Mermaid multilinea non sono esportabili in
   PNG: in quel caso viene mostrato un messaggio. Il fattore viene ridotto oltre
   16.384 pixel per lato o 32 milioni di pixel complessivi.
-- **PDF**: nell’app browser apre la stampa; scegli “Salva come PDF”.
+- **PDF**: nell’estensione genera un PDF con immagine PNG a 2× su una pagina
+  proporzionata al diagramma, con gli stessi limiti di risoluzione del PNG. Il
+  testo è rasterizzato, non selezionabile; alcune etichette Mermaid multilinea
+  richiedono il passaggio a Pele o l’export SVG. Nell’app browser resta disponibile
+  la stampa vettoriale: scegli “Salva come PDF”.
 
 | Controllo | Azione |
 |---|---|
@@ -119,7 +123,7 @@ profilo temporaneo e non installa l’estensione nel profilo personale.
 Premi F5 nel repository per provarla manualmente nell’Extension Development Host.
 
 `tests/browser.js` è un’espressione asincrona eseguibile nella console del viewer:
-verifica renderer lazy, responsive/fisso, aggiornamenti e SVG/PNG in un iframe con
+verifica renderer lazy, responsive/fisso, aggiornamenti e SVG/PNG/PDF in un iframe con
 CSP e messaggi equivalenti alla webview. I test nell’Extension Host verificano
 attivazione, pannello affiancato, modifiche non salvate, riuso e chiusura.
 

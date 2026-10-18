@@ -35,6 +35,11 @@
     await wait(() => messages.some(m => m.type === 'export' && m.ext === 'png'));
     assert(messages.some(m => m.ext === 'svg' && atob(m.data).includes('--pele-bg')), 'SVG export embeds theme variables');
     assert(messages.some(m => m.ext === 'png' && m.data.startsWith('iVBOR')), 'Pele PNG export produces a valid PNG');
+    assert(!win.jspdf, 'PDF library stays unloaded until export');
+    assert(!doc.querySelector('[data-export="pdf"]').hidden, 'PDF is available in the extension');
+    doc.querySelector('[data-export="pdf"]').click();
+    await wait(() => messages.some(m => m.ext === 'pdf'));
+    assert(atob(messages.find(m => m.ext === 'pdf').data).startsWith('%PDF-'), 'Pele PDF export produces a PDF under CSP');
     const engine = doc.querySelector('#engine'); engine.value = 'mermaid'; engine.dispatchEvent(new win.Event('change'));
     await wait(() => svg()?.id?.startsWith('diagram'));
     assert(doc.querySelector('#err').hidden, 'Mermaid renders in webview CSP');
@@ -44,6 +49,11 @@
     doc.querySelector('[data-export="png@1"]').click();
     await wait(() => messages.filter(m => m.type === 'export' && m.ext === 'png').length === 2);
     assert(true, 'Mermaid PNG export works under webview CSP');
+    doc.querySelector('[data-export="pdf"]').click();
+    await wait(() => messages.filter(m => m.ext === 'pdf').length === 2);
+    const pdfs = messages.filter(m => m.ext === 'pdf');
+    assert(atob(pdfs[1].data).startsWith('%PDF-'), 'Mermaid PDF export produces a PDF under CSP');
+    window.testPDFs = pdfs.map(m => m.data);
     win.postMessage({type:'document',text:'flowchart TD\n X[Latest] --> Y[Change]',name:'test.mmd',settings:{engine:'pele',responsive:true}}, '*');
     await wait(() => svg()?.textContent.includes('Latest'));
     assert(true, 'Unsaved document message updates preview');
