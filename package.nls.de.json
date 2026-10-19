@@ -1,0 +1,6 @@
+{
+  "command": "Vorschau seitlich öffnen",
+  "engine": "Standard-Engine für neue Vorschauen.",
+  "responsive": "Diagramm an die Panelbreite anpassen.",
+  "description": "Live-Mermaid-Vorschau mit Verschieben, Zoom und SVG/PNG/PDF-Export"
+}

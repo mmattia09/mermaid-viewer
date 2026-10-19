@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { mermaidColors } from './themes.js';
 let pele;
 let mermaid;
@@ -16,13 +17,13 @@ function loadMermaid() {
     const script = document.createElement('script');
     script.src = new URL('./vendor/mermaid.min.js', import.meta.url).href;
     script.onload = () => resolve(globalThis.mermaid);
-    script.onerror = () => { mermaid = null; script.remove(); reject(new Error('Caricamento Mermaid non riuscito')); };
+    script.onerror = () => { mermaid = null; script.remove(); reject(new Error(t('Caricamento Mermaid non riuscito'))); };
     document.head.append(script);
   });
 }
 
 export async function renderDiagram(source, { engine = 'pele', responsive = true, width, theme = 'default', palette, raster = false } = {}) {
-  if (source.length > 50000) throw new Error('Il diagramma supera il limite di 50.000 caratteri');
+  if (source.length > 50000) throw new Error(t('Il diagramma supera il limite di 50.000 caratteri'));
   if (engine === 'pele') {
     const api = await (pele ??= import('./vendor/pele/lazy.js'));
     return api.renderAsync(source, {

@@ -1,0 +1,6 @@
+{
+  "command": "Ouvrir l’aperçu sur le côté",
+  "engine": "Moteur par défaut des nouveaux aperçus.",
+  "responsive": "Adapter le diagramme à la largeur du panneau.",
+  "description": "Aperçu Mermaid en direct avec déplacement, zoom et export SVG/PNG/PDF"
+}

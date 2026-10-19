@@ -1,0 +1,6 @@
+{
+  "command": "Apri anteprima a lato",
+  "engine": "Motore predefinito per le nuove anteprime.",
+  "responsive": "Adatta il diagramma alla larghezza del pannello.",
+  "description": "Anteprima Mermaid live con pan, zoom ed export SVG/PNG/PDF"
+}

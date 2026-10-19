@@ -4,6 +4,7 @@ import { prepareMarkdown } from './md-labels.js';
 import { renderDiagram } from './renderers.js';
 import { rasterize } from './export-image.js';
 import { themes } from './themes.js';
+import { t, setLanguage, bindTranslations } from './i18n.js';
 
 const vscode = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : null;
 const saved = vscode?.getState() || {};
@@ -329,7 +330,7 @@ function drawRecents() {
   const box = $('#recents');
   box.replaceChildren();
   if (!list.length) return;
-  box.append(Object.assign(document.createElement('b'), { textContent: 'Recenti' }));
+  box.append(Object.assign(document.createElement('b'), { textContent: t('Recenti') }));
   for (const p of list) {
     const b = document.createElement('button');
     b.textContent = p.split('/').pop();
@@ -345,7 +346,7 @@ async function choose(path) {
     picker.hidden = true;
   } catch (e) {
     errBox.hidden = false;
-    errBox.textContent = `Impossibile aprire il file: ${e.message}`;
+    errBox.textContent = t('Impossibile aprire il file: {error}', { error: e.message });
   }
 }
 
@@ -390,7 +391,7 @@ async function loadDir(dir) {
 
   if (!d.dirs.length && !d.files.length) {
     listing.append(Object.assign(document.createElement('li'),
-      { className: 'empty', textContent: 'nessun diagramma qui' }));
+      { className: 'empty', textContent: t('nessun diagramma qui') }));
   }
 }
 
@@ -489,13 +490,13 @@ function download(blob, ext) {
     reader.onload = () => vscode.postMessage({ type: 'export', ext, data: reader.result.split(',')[1] });
     reader.readAsDataURL(blob); return;
   }
-  const base = (state.name || 'diagramma').replace(/\.[^.]+$/, '');
+  const base = (state.name || t('diagramma')).replace(/\.[^.]+$/, '');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `${base}.${ext}`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-  toast(`Esportato ${base}.${ext}`);
+  toast(t('Esportato {file}', { file: `${base}.${ext}` }));
 }
 
 function exportSVG() {
@@ -505,28 +506,28 @@ function exportSVG() {
 
 async function exportPNG(scale) {
   if (!canvas.querySelector('svg')) return;
-  toast('Preparo il PNG…');
+  toast(t('Preparo il PNG…'));
   try {
     const out = await rasterSource();
-    if (!out) throw new Error('PNG non disponibile per questo diagramma: usa SVG');
+    if (!out) throw new Error(t('PNG non disponibile per questo diagramma: usa SVG'));
     const image = await rasterize(out, scale);
     const blob = await new Promise(resolve => image.toBlob(resolve, 'image/png'));
-    if (!blob) throw new Error('Canvas vuoto');
+    if (!blob) throw new Error(t('Canvas vuoto'));
     download(blob, 'png');
-  } catch (error) { toast(error.message || 'Export PNG non riuscito'); }
+  } catch (error) { toast(error.message || t('Export PNG non riuscito')); }
 }
 
 let exportingPDF = false;
 async function exportExtensionPDF() {
   if (exportingPDF || !canvas.querySelector('svg')) return;
   exportingPDF = true;
-  toast('Preparo il PDF…');
+  toast(t('Preparo il PDF…'));
   try {
     const out = await rasterSource();
-    if (!out) throw new Error('PDF non disponibile per queste etichette Mermaid: usa SVG o il motore Pele');
+    if (!out) throw new Error(t('PDF non disponibile per queste etichette Mermaid: usa SVG o il motore Pele'));
     const { createPDF } = await import('./export-pdf.js');
     download(await createPDF(out), 'pdf');
-  } catch (error) { toast(error.message || 'Export PDF non riuscito'); }
+  } catch (error) { toast(error.message || t('Export PDF non riuscito')); }
   finally { exportingPDF = false; }
 }
 
@@ -536,9 +537,9 @@ function exportPDF() {
   const out = exportSvgString();
   if (!out) return;
   const w = window.open('', '_blank');
-  if (!w) { toast('Il browser ha bloccato la finestra'); return; }
+  if (!w) { toast(t('Il browser ha bloccato la finestra')); return; }
   w.document.write(`<!doctype html><html><head><meta charset="utf-8">
-<title>Diagramma</title>
+<title>${t("diagramma")}</title>
 <style>
   @page { size: ${Math.ceil(out.w)}px ${Math.ceil(out.h)}px; margin: 0 }
   html,body { margin:0; padding:0 }
@@ -641,6 +642,26 @@ new ResizeObserver(() => {
 
 /* ------------------------------------------------------------------ boot */
 
+if (vscode) $('#drop').innerHTML = '<p>Il diagramma apparirà qui</p><p class="small">Scrivi nel file aperto a lato per aggiornare l’anteprima.</p>';
+let hostLanguage = document.documentElement.dataset.language || navigator.language;
+const languageSelect = $('#language');
+languageSelect.value = ['auto', 'en', 'it', 'fr', 'de', 'es'].includes(storage.getItem('mv-language')) ? storage.getItem('mv-language') : 'auto';
+// The filename is dynamic and is deliberately excluded from translation bindings.
+const emptyFileText = fileLabel.firstChild;
+fileLabel.replaceChildren();
+fileLabel.removeAttribute('title');
+const translateUI = bindTranslations(document.body);
+fileLabel.append(emptyFileText);
+function applyLanguage() {
+  document.documentElement.lang = setLanguage(languageSelect.value === 'auto' ? hostLanguage : languageSelect.value);
+  translateUI();
+  if (!state.name) { fileLabel.textContent = t('Nessun diagramma'); fileLabel.title = t('nessun file'); }
+  drawRecents();
+}
+languageSelect.onchange = () => { storage.setItem('mv-language', languageSelect.value); applyLanguage(); };
+addEventListener('languagechange', () => { if (!vscode) { hostLanguage = navigator.language; applyLanguage(); } });
+applyLanguage();
+
 state.theme = storage.getItem('mv-theme') || 'auto';
 state.engine = storage.getItem('mv-engine') === 'mermaid' ? 'mermaid' : 'pele';
 state.responsive = storage.getItem('mv-responsive') !== 'false';
@@ -655,7 +676,6 @@ applyView();
 
 const path = new URLSearchParams(location.search).get('path');
 if (vscode) {
-  $('#drop').innerHTML = '<p>Il diagramma apparirà qui</p><p class="small">Scrivi nel file aperto a lato per aggiornare l’anteprima.</p>';
   new MutationObserver(() => { if (state.theme === 'auto') { applyChrome(); render(); } })
     .observe(document.body, { attributes: true, attributeFilter: ['class'] });
   let defaults;
@@ -677,7 +697,7 @@ if (vscode) {
 } else if (path) {
   openPath(path).catch((e) => {
     errBox.hidden = false;
-    errBox.textContent = `Impossibile aprire il file: ${e.message}`;
+    errBox.textContent = t('Impossibile aprire il file: {error}', { error: e.message });
     openPicker();
   });
 } else {

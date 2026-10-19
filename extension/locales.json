@@ -1,0 +1,37 @@
+{
+  "en": {
+    "open": "Open a .mmd or .mermaid file.",
+    "select": "Select a .mmd or .mermaid file.",
+    "preview": "Preview",
+    "exportError": "Export failed",
+    "previewError": "Preview unavailable"
+  },
+  "it": {
+    "open": "Apri un file .mmd o .mermaid.",
+    "select": "Seleziona un file .mmd o .mermaid.",
+    "preview": "Anteprima",
+    "exportError": "Esportazione non riuscita",
+    "previewError": "Anteprima non disponibile"
+  },
+  "fr": {
+    "open": "Ouvrez un fichier .mmd ou .mermaid.",
+    "select": "Sélectionnez un fichier .mmd ou .mermaid.",
+    "preview": "Aperçu",
+    "exportError": "Échec de l’export",
+    "previewError": "Aperçu indisponible"
+  },
+  "de": {
+    "open": "Öffne eine .mmd- oder .mermaid-Datei.",
+    "select": "Wähle eine .mmd- oder .mermaid-Datei aus.",
+    "preview": "Vorschau",
+    "exportError": "Export fehlgeschlagen",
+    "previewError": "Vorschau nicht verfügbar"
+  },
+  "es": {
+    "open": "Abre un archivo .mmd o .mermaid.",
+    "select": "Selecciona un archivo .mmd o .mermaid.",
+    "preview": "Vista previa",
+    "exportError": "Error al exportar",
+    "previewError": "Vista previa no disponible"
+  }
+}

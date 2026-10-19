@@ -1,0 +1,6 @@
+{
+  "command": "Open Preview to the Side",
+  "engine": "Default engine for new previews.",
+  "responsive": "Adapt the diagram to the panel width.",
+  "description": "Live Mermaid preview with pan, zoom and SVG/PNG/PDF export"
+}

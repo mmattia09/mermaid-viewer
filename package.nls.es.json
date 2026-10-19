@@ -1,0 +1,6 @@
+{
+  "command": "Abrir vista previa al lado",
+  "engine": "Motor predeterminado para las nuevas vistas previas.",
+  "responsive": "Adaptar el diagrama al ancho del panel.",
+  "description": "Vista previa Mermaid en vivo con desplazamiento, zoom y exportación SVG/PNG/PDF"
+}

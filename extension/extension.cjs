@@ -3,20 +3,23 @@ const { readFile } = require('node:fs/promises');
 const { basename } = require('node:path');
 const { randomBytes } = require('node:crypto');
 
+const locales = require('./locales.json');
 function activate(context) {
+  const language = vscode.env.language.toLowerCase().split('-')[0];
+  const strings = locales[language] || locales.en;
   const panels = new Map();
   const publicRoot = vscode.Uri.joinPath(context.extensionUri, 'public');
   const command = vscode.commands.registerCommand('mermaidViewer.openPreview', async (uri) => {
     try {
       uri ??= vscode.window.activeTextEditor?.document.uri;
-      if (!uri) return vscode.window.showInformationMessage('Apri un file .mmd o .mermaid.');
+      if (!uri) return vscode.window.showInformationMessage(strings.open);
       if (!/\.(mmd|mermaid)$/i.test(uri.path) && uri.scheme !== 'untitled') {
-        return vscode.window.showInformationMessage('Seleziona un file .mmd o .mermaid.');
+        return vscode.window.showInformationMessage(strings.select);
       }
       const key = uri.toString();
       if (panels.has(key)) { panels.get(key).reveal(vscode.ViewColumn.Beside, true); return; }
       const document = await vscode.workspace.openTextDocument(uri);
-      const panel = vscode.window.createWebviewPanel('mermaidViewer.preview', `Anteprima: ${basename(uri.path)}`,
+      const panel = vscode.window.createWebviewPanel('mermaidViewer.preview', `${strings.preview}: ${basename(uri.path)}`,
         { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
         { enableScripts: true, localResourceRoots: [publicRoot] });
       panel.iconPath = { light: vscode.Uri.joinPath(context.extensionUri, 'icons/mermaid-light.svg'), dark: vscode.Uri.joinPath(context.extensionUri, 'icons/mermaid-dark.svg') };
@@ -39,7 +42,7 @@ function activate(context) {
                 filters: { [message.ext.toUpperCase()]: [message.ext] },
               });
               if (target) await vscode.workspace.fs.writeFile(target, Buffer.from(message.data, 'base64'));
-            } catch (error) { vscode.window.showErrorMessage(`Esportazione non riuscita: ${error.message}`); }
+            } catch (error) { vscode.window.showErrorMessage(`${strings.exportError}: ${error.message}`); }
           }
         }),
         vscode.workspace.onDidChangeTextDocument(event => {
@@ -59,12 +62,12 @@ function activate(context) {
         const nonce = randomBytes(18).toString('base64');
         const resource = file => panel.webview.asWebviewUri(vscode.Uri.joinPath(publicRoot, file)).toString();
         html = html.replace(/(src|href)="\/([^\"]+)"/g, (_, attr, file) => `${attr}="${resource(file)}"`)
-          .replace('<html lang="it">', '<html lang="it" data-host="vscode">')
+          .replace('<html lang="it">', `<html lang="it" data-host="vscode" data-language="${locales[language] ? language : 'en'}">`)
           .replace('<script ', `<script nonce="${nonce}" `)
           .replace('<head>', `<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src ${panel.webview.cspSource} 'nonce-${nonce}'; style-src ${panel.webview.cspSource} 'unsafe-inline'; img-src ${panel.webview.cspSource} blob: data:; font-src ${panel.webview.cspSource}; connect-src 'none';">`);
         panel.webview.html = html;
       } catch (error) { panel.dispose(); throw error; }
-    } catch (error) { vscode.window.showErrorMessage(`Anteprima non disponibile: ${error.message}`); }
+    } catch (error) { vscode.window.showErrorMessage(`${strings.previewError}: ${error.message}`); }
   });
   context.subscriptions.push(command, { dispose: () => { for (const panel of panels.values()) panel.dispose(); } });
 }

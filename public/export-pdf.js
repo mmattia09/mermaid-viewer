@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { rasterize } from './export-image.js';
 
 let library;
@@ -8,7 +9,7 @@ function loadPDF() {
     script.onload = () => resolve(globalThis.jspdf.jsPDF);
     script.onerror = () => {
       library = null; script.remove();
-      reject(new Error('Caricamento del modulo PDF non riuscito'));
+      reject(new Error(t('Caricamento del modulo PDF non riuscito')));
     };
     document.head.append(script);
   });

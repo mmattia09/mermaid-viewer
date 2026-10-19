@@ -13,7 +13,7 @@ exports.run = async () => {
   await vscode.window.showTextDocument(doc);
   await vscode.commands.executeCommand('mermaidViewer.openPreview', doc.uri);
   await new Promise(resolve => setTimeout(resolve, 2000));
-  const preview = vscode.window.tabGroups.all.flatMap(group => group.tabs).find(tab => tab.label.startsWith('Anteprima:'));
+  const preview = vscode.window.tabGroups.all.flatMap(group => group.tabs).find(tab => tab.input instanceof vscode.TabInputWebview);
   assert.ok(preview, 'Preview opened beside the file');
   assert.equal(vscode.window.tabGroups.all.length, 2);
   const edit = new vscode.WorkspaceEdit();
@@ -22,7 +22,7 @@ exports.run = async () => {
   assert.ok(doc.isDirty);
   await new Promise(resolve => setTimeout(resolve, 300));
   await vscode.commands.executeCommand('mermaidViewer.openPreview', doc.uri);
-  assert.equal(vscode.window.tabGroups.all.flatMap(group => group.tabs).filter(tab => tab.label.startsWith('Anteprima:')).length, 1);
+  assert.equal(vscode.window.tabGroups.all.flatMap(group => group.tabs).filter(tab => tab.input instanceof vscode.TabInputWebview).length, 1);
   await vscode.window.tabGroups.close(preview);
   await vscode.commands.executeCommand('workbench.action.files.revert');
   console.log('VS Code: activation, side preview, unsaved edit, reuse and disposal passed');

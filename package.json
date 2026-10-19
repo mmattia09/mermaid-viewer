@@ -2,7 +2,7 @@
   "name": "mermaid-viewer",
   "version": "1.1.0",
   "private": true,
-  "description": "Anteprima Mermaid live con zoom infinito ed export SVG/PNG/PDF",
+  "description": "%description%",
   "type": "module",
   "bin": {
     "mmv": "./mmv"
@@ -41,7 +41,7 @@
     "commands": [
       {
         "command": "mermaidViewer.openPreview",
-        "title": "Apri anteprima a lato",
+        "title": "%command%",
         "category": "Mermaid Viewer",
         "icon": "$(open-preview)"
       }
@@ -97,12 +97,12 @@
             "mermaid"
           ],
           "default": "pele",
-          "description": "Motore predefinito per le nuove anteprime."
+          "description": "%engine%"
         },
         "mermaidViewer.responsive": {
           "type": "boolean",
           "default": true,
-          "description": "Adatta il diagramma alla larghezza del pannello."
+          "description": "%responsive%"
         }
       }
     },

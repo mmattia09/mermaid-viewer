@@ -25,6 +25,13 @@
     const svg = () => doc.querySelector('#canvas svg');
     assert(svg().textContent.includes('Start'), 'Webview ready handshake renders Pele under CSP');
     assert(!win.mermaid, 'Mermaid is not loaded for Pele');
+    const language = doc.querySelector('#language');
+    for (const [locale, exportLabel] of [['en', 'Export'], ['fr', 'Exporter'], ['de', 'Exportieren'], ['es', 'Exportar'], ['it', 'Esporta']]) {
+      language.value = locale; language.dispatchEvent(new win.Event('change'));
+      assert(doc.documentElement.lang === locale && doc.querySelector('#exportBtn').textContent.includes(exportLabel), `Webview switches to ${locale}`);
+      assert(doc.querySelector('#file').textContent === 'test.mmd' && svg().textContent.includes('Start'), 'Localization preserves file names and diagram content');
+    }
+
     assert(getComputedStyle(doc.querySelector('#open')).display === 'none', 'Open file is hidden in VS Code');
     doc.querySelector('#open').click();
     doc.body.dispatchEvent(new win.KeyboardEvent('keydown', {key:'o',ctrlKey:true,bubbles:true}));
