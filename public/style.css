@@ -74,7 +74,7 @@ select.btn { appearance: auto; background: var(--btn); border-color: var(--line)
 .zoom-controls { display: flex; align-items: center; background: var(--btn); border: 1px solid var(--line); border-radius: 6px; }
 .zoom-controls .btn { height: 26px; }
 .export { border-color: var(--line); background: var(--btn); }
-.chevron { color: var(--dim); }
+.btn .chevron { width: 12px; height: 12px; color: var(--dim); }
 .responsive-toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--dim); position: relative; white-space: nowrap; }
 .responsive-toggle input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
 .switch-track { width: 25px; height: 14px; border: 1px solid var(--dim); border-radius: 12px; position: relative; flex: none; }
@@ -100,7 +100,7 @@ select.btn { appearance: auto; background: var(--btn); border-color: var(--line)
 @media (max-width: 520px) {
   .document-row { padding-inline: 8px; gap: 6px; }
   .document-actions, .document-info, .view-controls { gap: 4px; }
-  .export span { display: none; }
+  .export span, .export .chevron { display: none; }
   .export { width: 28px; padding: 0; }
   .document-icon { display: none; }
 }
