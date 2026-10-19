@@ -41,7 +41,7 @@ html, body {
   font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
 }
 
-/* A document strip and a stable control strip, even in a narrow editor group. */
+/* A single flexible command bar; rendering preferences live in Options. */
 body { display: flex; flex-direction: column; }
 .bar {
   flex: none; background: var(--bar); border-bottom: 1px solid var(--line);
@@ -49,12 +49,11 @@ body { display: flex; flex-direction: column; }
   font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
   font-size: 12px;
 }
-.document-row, .controls-row { display: flex; align-items: center; justify-content: space-between; min-width: 0; gap: 12px; padding: 7px 12px; }
-.document-row { min-height: 39px; }
-.controls-row { border-top: 1px solid var(--line); min-height: 43px; }
-.document-info, .document-actions, .render-controls, .view-controls { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.document-row { display: flex; align-items: center; justify-content: space-between; min-width: 0; gap: 12px; padding: 7px 12px; }
+.document-row { min-height: 44px; }
+.document-info, .document-actions, .view-controls { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .document-info { flex: 1; }
-.document-actions, .view-controls, .render-controls { flex: none; }
+.document-actions, .view-controls { flex: none; }
 .document-actions { position: relative; }
 .document-actions > .menu:first-child { position: static; }
 .document-icon { display: flex; color: var(--dim); flex: none; }
@@ -72,7 +71,6 @@ body { display: flex; flex-direction: column; }
 .btn.icon { width: 28px; padding: 0; font-size: 16px; }
 .btn.wide { min-width: 52px; padding: 0 3px; font-variant-numeric: tabular-nums; font-size: 11px; }
 select.btn { appearance: auto; background: var(--btn); border-color: var(--line); padding: 0 6px; }
-.engine { width: 86px; }
 .zoom-controls { display: flex; align-items: center; background: var(--btn); border: 1px solid var(--line); border-radius: 6px; }
 .zoom-controls .btn { height: 26px; }
 .export { border-color: var(--line); background: var(--btn); }
@@ -99,12 +97,24 @@ select.btn { appearance: auto; background: var(--btn); border-color: var(--line)
   --accent: var(--vscode-focusBorder, #007fd4);
   --grid: color-mix(in srgb, var(--fg) 6%, var(--bg));
 }
-@media (max-width: 380px) {
-  .document-row, .controls-row { padding-inline: 8px; gap: 6px; }
-  .render-controls, .view-controls { gap: 5px; }
-  .engine { width: 76px; }
-  .controls-row { flex-wrap: wrap; }
-  .view-controls { margin-left: auto; }
+@media (max-width: 520px) {
+  .document-row { padding-inline: 8px; gap: 6px; }
+  .document-actions, .document-info, .view-controls { gap: 4px; }
+  .export span { display: none; }
+  .export { width: 28px; padding: 0; }
+  .document-icon { display: none; }
+}
+@media (max-width: 340px) {
+  .document-row { padding-inline: 6px; gap: 4px; }
+  .document-info .dot { display: none; }
+  .btn.wide { min-width: 44px; }
+  .zoom-controls .btn.icon { width: 24px; }
+  .file { font-size: 11px; }
+}
+@media (max-width: 250px) {
+  .document-row { flex-wrap: wrap; }
+  .document-info { flex-basis: 100%; }
+  .document-actions { margin-left: auto; }
 }
 
 .dot {
@@ -146,7 +156,7 @@ select.btn { appearance: auto; background: var(--btn); border-color: var(--line)
 }
 .dropdown button span { color: var(--dim); margin-left: auto; font-size: 11px; }
 .dropdown button { display: flex; gap: 18px; }
-.options { width: 226px; padding: 14px; gap: 16px; }
+.options { width: min(226px, calc(100vw - 16px)); padding: 14px; gap: 16px; }
 .option-field { display: flex; flex-direction: column; gap: 8px; }
 .option-field select { width: 100%; }
 .option-check { font-size: 12px; }

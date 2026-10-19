@@ -7,7 +7,7 @@ VS Code. Interfaccia in italiano, pan/zoom, temi ed esportazione locale.
 ## Anteprima dell’interfaccia
 
 VS Code: sorgente con syntax highlighting e icona Mermaid, anteprima affiancata
-senza margini laterali. La barra separa i comandi del file dai controlli del diagramma.
+senza margini laterali. La barra compatta mantiene nome file, zoom, impostazioni ed esportazione sulla stessa riga.
 
 ![Syntax highlighting e anteprima affiancata in VS Code](docs/images/vscode-preview.png)
 
@@ -18,6 +18,8 @@ App browser con tema **Oceano**:
 Interfaccia della webview con tema **Prugna**, verificata in un pannello da 420 px:
 
 <img src="docs/images/webview-plum.png" alt="Webview compatta con tema Prugna e layout verticale responsive" width="420">
+
+<img src="docs/images/webview-options.png" alt="Impostazioni con motore, Responsive e tema" width="420">
 
 Gli screenshot usano [il diagramma di esempio](examples/anteprima.mmd).
 
@@ -40,7 +42,7 @@ L’anteprima segue anche le modifiche non salvate, con debounce di 100 ms. Ogni
 file ha il proprio pannello: richiamare il comando riutilizza quello esistente.
 Non richiede Bun, un server o una connessione Internet.
 
-Puoi scegliere **Pele / Mermaid** e **Responsive** nella barra. Le opzioni della
+Puoi scegliere **Pele / Mermaid** e **Responsive** dal menu **Opzioni anteprima**. Le opzioni della
 singola anteprima sopravvivono quando il pannello viene nascosto; i valori
 predefiniti per le nuove anteprime sono configurabili nelle impostazioni:
 
@@ -54,7 +56,7 @@ predefiniti per le nuove anteprime sono configurabili nelle impostazioni:
 Il tema automatico segue VS Code. La webview occupa tutta la larghezza del pannello,
 senza il padding laterale predefinito. Il pulsante Apri, il selettore di file e il
 trascinamento sono disabilitati nella webview: apri i documenti dall’editor o da Explorer.
-Tema e Markdown sono nel menu **Opzioni anteprima**, accanto a **Esporta**. SVG, PNG e PDF aprono la finestra di salvataggio nativa. Il PDF viene generato
+Motore, Responsive, tema e Markdown sono nel menu **Opzioni anteprima**, accanto a **Esporta**. Sui pannelli stretti il nome del file si accorcia e il pulsante Esporta mostra solo l’icona; i comandi restano accessibili. SVG, PNG e PDF aprono la finestra di salvataggio nativa. Il PDF viene generato
 localmente a richiesta, senza browser esterni o servizi online.
 
 ## App browser

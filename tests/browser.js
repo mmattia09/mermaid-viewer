@@ -36,6 +36,17 @@
       return Math.abs(a.x + a.width / 2 - b.x - b.width / 2) < 1 && Math.abs(a.y + a.height / 2 - b.y - b.height / 2) < 1;
     };
     assert(doc.body.scrollWidth <= 420, 'Toolbar fits a narrow side panel');
+    assert(doc.querySelector('#optionsMenu').contains(doc.querySelector('#engine')) && doc.querySelector('#optionsMenu').contains(doc.querySelector('#responsive')), 'Rendering preferences live in Options');
+    for (const width of [320, 420]) {
+      frame.style.width = `${width}px`;
+      await new Promise(r => setTimeout(r, 200));
+      const controls = ['#zoomLabel', '#fit', '#optionsBtn', '#exportBtn'].map(s => doc.querySelector(s).getBoundingClientRect());
+      assert(controls.every(r => r.left >= 0 && r.right <= width && Math.abs(r.y - controls[0].y) <= 1), `Toolbar stays on one row at ${width}px`);
+      doc.querySelector('#optionsBtn').click();
+      const menu = doc.querySelector('#optionsMenu').getBoundingClientRect();
+      assert(menu.left >= 0 && menu.right <= width, `Options stay within ${width}px`);
+      doc.querySelector('#optionsBtn').click();
+    }
     assert(svg().viewBox.baseVal.height > svg().viewBox.baseVal.width, 'Responsive Pele adapts direction');
     doc.querySelector('#responsive').click();
     await wait(() => doc.querySelector('#zoomLabel').textContent === '100%' && svg().viewBox.baseVal.width > svg().viewBox.baseVal.height);
@@ -49,7 +60,7 @@
     assert(true, 'Enabling responsive recenters the diagram');
     const responsiveSVG = svg();
     frame.style.height = '600px';
-    await wait(() => stage.clientHeight < 550 && centered());
+    await wait(() => stage.clientHeight === 600 - doc.querySelector(".bar").offsetHeight && centered());
     assert(svg() === responsiveSVG, 'Height-only resize does not rebuild the diagram');
     doc.querySelector('[data-zoom="in"]').click();
     const zoom = doc.querySelector('#zoomLabel').textContent;

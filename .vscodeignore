@@ -2,7 +2,7 @@
 .vscode/**
 node_modules/**
 tests/**
-docs/**
+docs/*.md
 scripts/**
 artifacts/**
 *.vsix
