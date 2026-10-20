@@ -1,6 +1,5 @@
-<!doctype html>
-<html lang="it">
-<head>
+<!DOCTYPE html><html lang="it" data-viewer-root><head>
+<!-- host-meta -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>mermaid-viewer</title>
@@ -8,50 +7,50 @@
 </head>
 <body>
 
-<header class="bar" aria-label="Comandi anteprima">
+<header class="bar" aria-label="Comandi anteprima" data-i18n-aria-label="previewControls">
   <div class="document-row">
     <div class="document-info">
-      <button id="open" class="btn" data-browser-only title="Sfoglia i file (⌘O)">Apri…</button>
-      <span class="document-icon"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="8" height="5" rx="1"/><path d="M12 8v5M5 16v-3h14v3"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/></svg></span>
+      <button id="open" class="btn" data-browser-only="" title="Sfoglia i file (⌘O)" data-i18n-title="browseFiles" data-i18n="open">Apri…</button>
+      <span class="document-icon"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="8" height="5" rx="1"></rect><path d="M12 8v5M5 16v-3h14v3"></path><rect x="2" y="16" width="6" height="5" rx="1"></rect><rect x="16" y="16" width="6" height="5" rx="1"></rect></svg></span>
       <span id="file" class="file" title="nessun file">Nessun diagramma</span>
-      <span id="live" class="dot" title="Stato aggiornamento live" aria-label="Stato aggiornamento live"></span>
+      <span id="live" class="dot" title="Stato aggiornamento live" aria-label="Stato aggiornamento live" data-i18n-title="liveStatus" data-i18n-aria-label="liveStatus"></span>
     </div>
-    <div class="view-controls" role="group" aria-label="Zoom e inquadratura">
+    <div class="view-controls" role="group" aria-label="Zoom e inquadratura" data-i18n-aria-label="zoomControls">
       <div class="zoom-controls">
-        <button class="btn icon" data-zoom="out" title="Zoom indietro (−)" aria-label="Riduci zoom">−</button>
-        <button id="zoomLabel" class="btn wide" title="Centra al 100% (0)">100%</button>
-        <button class="btn icon" data-zoom="in" title="Zoom avanti (+)" aria-label="Aumenta zoom">+</button>
+        <button class="btn icon" data-zoom="out" title="Zoom indietro (−)" aria-label="Riduci zoom" data-i18n-title="zoomOutShortcut" data-i18n-aria-label="zoomOut">−</button>
+        <button id="zoomLabel" class="btn wide" title="Centra al 100% (0)" data-i18n-title="centerActualShortcut">100%</button>
+        <button class="btn icon" data-zoom="in" title="Zoom avanti (+)" aria-label="Aumenta zoom" data-i18n-title="zoomInShortcut" data-i18n-aria-label="zoomIn">+</button>
       </div>
-      <button class="btn icon" id="fit" title="Adatta e centra (F)" aria-label="Adatta e centra"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg></button>
+      <button class="btn icon" id="fit" title="Adatta e centra (F)" aria-label="Adatta e centra" data-i18n-title="fitShortcut" data-i18n-aria-label="fit"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"></path><rect x="8" y="8" width="8" height="8" rx="1"></rect></svg></button>
     </div>
     <div class="document-actions">
       <div class="menu">
-        <button class="btn icon" id="optionsBtn" title="Opzioni anteprima" aria-label="Opzioni anteprima" aria-expanded="false" aria-controls="optionsMenu"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="var(--bar)"/><circle cx="15" cy="17" r="3" fill="var(--bar)"/></svg></button>
-        <div id="optionsMenu" class="dropdown options" hidden>
-          <label class="option-field" for="engine">Motore di rendering
-            <select id="engine" class="btn" title="Motore di rendering"><option value="pele">Pele</option><option value="mermaid">Mermaid</option></select>
+        <button class="btn icon" id="optionsBtn" title="Opzioni anteprima" aria-label="Opzioni anteprima" aria-expanded="false" aria-controls="optionsMenu" data-i18n-title="previewSettings" data-i18n-aria-label="previewSettings"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 17h16"></path><circle cx="9" cy="7" r="3" fill="var(--bar)"></circle><circle cx="15" cy="17" r="3" fill="var(--bar)"></circle></svg></button>
+        <div id="optionsMenu" class="dropdown options" hidden="">
+          <label class="option-field" for="engine"><span data-i18n="engine">Motore di rendering</span>
+            <select id="engine" class="btn" title="Motore di rendering" data-i18n-title="engine"><option value="pele">Pele</option><option value="mermaid">Mermaid</option></select>
           </label>
-          <label class="responsive-toggle" title="Adatta il layout alla larghezza del pannello">
-            <input type="checkbox" role="switch" id="responsive" checked><span class="switch-track" aria-hidden="true"></span><span>Responsive</span>
+          <label class="responsive-toggle" title="Adatta il layout alla larghezza del pannello" data-i18n-title="responsiveHint">
+            <input type="checkbox" role="switch" id="responsive" checked=""><span class="switch-track" aria-hidden="true"></span><span data-i18n="responsive">Responsive</span>
           </label>
-          <label class="option-field" for="theme">Tema del diagramma
+          <label class="option-field" for="theme"><span data-i18n="theme">Tema del diagramma</span>
             <select id="theme" class="btn">
-              <option value="auto">Automatico</option><option value="default">Chiaro</option>
-              <option value="dark">Scuro</option><option value="neutral">Neutro</option><option value="forest">Forest</option>
-              <option value="ocean">Oceano</option><option value="plum">Prugna</option>
-              <option value="sand">Sabbia</option><option value="graphite">Grafite</option>
+              <option value="auto" data-i18n="automatic">Automatico</option><option value="default" data-i18n="light">Chiaro</option>
+              <option value="dark" data-i18n="dark">Scuro</option><option value="neutral" data-i18n="neutral">Neutro</option><option value="forest" data-i18n="forest">Forest</option>
+              <option value="ocean" data-i18n="ocean">Oceano</option><option value="plum" data-i18n="plum">Prugna</option>
+              <option value="sand" data-i18n="sand">Sabbia</option><option value="graphite" data-i18n="graphite">Grafite</option>
             </select>
           </label>
-          <label class="option-field" for="language">Lingua
-            <select id="language" class="btn"><option value="auto">Automatico</option><option value="en">English</option><option value="it">Italiano</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="es">Español</option></select>
+          <label class="option-field" for="language"><span data-i18n="language">Lingua</span>
+            <select id="language" class="btn"><option value="auto" data-i18n="automatic">Automatico</option><option value="en">English</option><option value="it">Italiano</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="es">Español</option></select>
           </label>
-          <label class="chk option-check"><input type="checkbox" id="md" checked> Markdown nelle etichette</label>
+          <label class="chk option-check"><input type="checkbox" id="md" checked=""> <span data-i18n="markdownLabels">Markdown nelle etichette</span></label>
         </div>
       </div>
       <div class="menu">
-        <button class="btn export" id="exportBtn" aria-label="Esporta diagramma" title="Esporta diagramma" aria-expanded="false" aria-controls="exportMenu"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4"/></svg><span>Esporta</span><svg class="chevron" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6 4 4 4-4"/></svg></button>
-        <div class="dropdown" id="exportMenu" hidden>
-          <button data-export="svg">SVG <span>Vettoriale</span></button>
+        <button class="btn export" id="exportBtn" aria-label="Esporta diagramma" title="Esporta diagramma" aria-expanded="false" aria-controls="exportMenu" data-i18n-title="exportDiagram" data-i18n-aria-label="exportDiagram"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4"></path></svg><span data-i18n="export">Esporta</span><svg class="chevron" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6 4 4 4-4"></path></svg></button>
+        <div class="dropdown" id="exportMenu" hidden="">
+          <button data-export="svg">SVG <span data-i18n="vector">Vettoriale</span></button>
           <button data-export="png@1">PNG <span>1×</span></button>
           <button data-export="png@2">PNG <span>2×</span></button>
           <button data-export="png@4">PNG <span>4×</span></button>
@@ -65,16 +64,16 @@
 <main id="stage" class="stage" tabindex="0">
   <div id="canvas" class="canvas"></div>
   <div id="drop" class="drop">
-    <p>Apri un file per iniziare</p>
-    <p class="small">premi <kbd>⌘O</kbd> · oppure trascina qui un <code>.mmd</code></p>
+    <p data-i18n="openToStart">Apri un file per iniziare</p>
+    <p class="small"><span data-i18n="press">premi</span> <kbd>⌘O</kbd> <span data-i18n="dropFileHint">· oppure trascina qui un</span> <code>.mmd</code></p>
   </div>
 </main>
 
-<div id="picker" class="picker" hidden>
+<div id="picker" class="picker" hidden="">
   <div class="sheet">
     <header>
-      <strong>Apri un diagramma</strong>
-      <button class="btn icon" id="pickerClose" title="Chiudi (esc)">×</button>
+      <strong data-i18n="openDiagram">Apri un diagramma</strong>
+      <button class="btn icon" id="pickerClose" title="Chiudi (esc)" data-i18n-title="closeShortcut">×</button>
     </header>
     <nav id="crumbs" class="crumbs"></nav>
     <ul id="listing" class="listing"></ul>
@@ -82,10 +81,11 @@
   </div>
 </div>
 
-<div id="err" class="err" role="alert" hidden></div>
-<div id="toast" class="toast" role="status" hidden></div>
+<div id="err" class="err" role="alert" hidden=""></div>
+<div id="toast" class="toast" role="status" hidden=""></div>
 
 
-<script src="/app.js" type="module"></script>
-</body>
-</html>
+<script data-viewer-entry src="/app.js" type="module"></script>
+
+
+</body></html>

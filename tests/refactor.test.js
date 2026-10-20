@@ -38,3 +38,37 @@ test('preferences validate persisted values and tolerate unavailable storage', (
   expect(preferences.engine).toBe('pele'); expect(preferences.theme).toBe('auto');
   expect(preferences.language).toBe('auto'); expect(preferences.responsive).toBe(false);
 });
+
+test('concurrent panel requests share one creation and closed panels can reopen', async () => {
+  const { createPanelRegistry } = await import('../extension/panel-registry.cjs');
+  const registry = createPanelRegistry();
+  let calls = 0, close;
+  const panel = { onDidDispose(fn) { close = fn; }, dispose() { close?.(); } };
+  const create = async () => { calls++; return panel; };
+  const [first, second] = await Promise.all([registry.getOrCreate('file', create), registry.getOrCreate('file', create)]);
+  expect(calls).toBe(1); expect(first).toBe(second);
+  panel.dispose(); await registry.getOrCreate('file', create);
+  expect(calls).toBe(2); registry.dispose();
+});
+
+test('failed panel creation can be retried', async () => {
+  const { createPanelRegistry } = await import('../extension/panel-registry.cjs');
+  const registry = createPanelRegistry();
+  await expect(registry.getOrCreate('file', async () => { throw Error('read failed'); })).rejects.toThrow();
+  const panel = { onDidDispose() {}, dispose() {} };
+  expect(await registry.getOrCreate('file', async () => panel)).toBe(panel);
+  registry.dispose();
+});
+
+test('webview HTML uses explicit markers and preserves restrictive CSP', async () => {
+  const { buildWebviewHTML } = await import('../extension/webview-html.cjs');
+  const template = await Bun.file('public/index.html').text();
+  const html = buildWebviewHTML(template.replace('lang="it"', 'lang="fr"'), {
+    language:'de', nonce:'test', cspSource:'vscode-webview:', resource: file => `https://local/${file}`,
+  });
+  expect(html).toContain('data-language="de"');
+  expect(html).toContain("connect-src 'none'");
+  expect(html).toContain('nonce="test"');
+  expect(html).toContain('src="https://local/app.js"');
+  expect(() => buildWebviewHTML('', {})).toThrow('template marker');
+});

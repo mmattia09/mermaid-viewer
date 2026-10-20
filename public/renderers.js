@@ -15,11 +15,11 @@ export const baseConfig = {
 const loadMermaid = lazyScript(
   new URL('./vendor/mermaid.min.js', import.meta.url).href,
   () => globalThis.mermaid,
-  () => t('Caricamento Mermaid non riuscito'),
+  () => t('mermaidLoadFailed'),
 );
 
 export async function renderDiagram(source, { engine = 'pele', responsive = true, width, theme = 'default', palette, raster = false } = {}) {
-  if (source.length > 50000) throw new Error(t('Il diagramma supera il limite di 50.000 caratteri'));
+  if (source.length > 50000) throw new Error(t('sourceTooLarge'));
   if (engine === 'pele') {
     const api = await (pele ??= import('./vendor/pele/lazy.js'));
     return api.renderAsync(source, {

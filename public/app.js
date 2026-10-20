@@ -5,7 +5,7 @@ import { renderDiagram } from './renderers.js';
 import { createExporter } from './exporter.js';
 import { createViewport } from './viewport.js';
 import { createFileBrowser } from './file-browser.js';
-import { createStorage, readPreferences } from './preferences.js';
+import { createStorage, readPreferences, normalizePreference } from './preferences.js';
 import { latestTask } from './async.js';
 import { themes } from './themes.js';
 import { t, setLanguage, bindTranslations } from './i18n.js';
@@ -128,6 +128,7 @@ function toast(msg) {
 /* ------------------------------------------------------- caricamento file */
 
 function setSource(text, name, { reset = false } = {}) {
+  if (text === state.source && (!name || name === state.name) && !reset && !state.fresh) return;
   state.source = text;
   if (name) {
     state.name = name;
@@ -235,20 +236,15 @@ prefersDark.addEventListener('change', () => {
 });
 /* ------------------------------------------------------------------ boot */
 
-if (vscode) $('#drop').innerHTML = '<p>Il diagramma apparirà qui</p><p class="small">Scrivi nel file aperto a lato per aggiornare l’anteprima.</p>';
+if (vscode) $('#drop').innerHTML = '<p data-i18n="emptyPreview">Il diagramma apparirà qui</p><p class="small" data-i18n="editBesideHint">Scrivi nel file aperto a lato per aggiornare l’anteprima.</p>';
 let hostLanguage = document.documentElement.dataset.language || navigator.language;
 const languageSelect = $('#language');
 languageSelect.value = state.language;
-// The filename is dynamic and is deliberately excluded from translation bindings.
-const emptyFileText = fileLabel.firstChild;
-fileLabel.replaceChildren();
-fileLabel.removeAttribute('title');
 const translateUI = bindTranslations(document.body);
-fileLabel.append(emptyFileText);
 function applyLanguage() {
   document.documentElement.lang = setLanguage(languageSelect.value === 'auto' ? hostLanguage : languageSelect.value);
   translateUI();
-  if (!state.name) { fileLabel.textContent = t('Nessun diagramma'); fileLabel.title = t('nessun file'); }
+  if (!state.name) { fileLabel.textContent = t('noDiagram'); fileLabel.title = t('noFile'); }
   files?.drawRecents();
 }
 languageSelect.onchange = () => { storage.setItem('mv-language', languageSelect.value); applyLanguage(); };
@@ -273,8 +269,8 @@ if (vscode) {
     const nextDefaults = JSON.stringify(data.settings);
     if (defaults !== nextDefaults) {
       const initial = defaults === undefined;
-      state.engine = initial && storage.getItem('mv-engine') ? state.engine : data.settings.engine;
-      state.responsive = initial && storage.getItem('mv-responsive') !== null ? state.responsive : data.settings.responsive;
+      state.engine = initial && storage.getItem('mv-engine') ? state.engine : normalizePreference('engine', data.settings?.engine);
+      state.responsive = initial && storage.getItem('mv-responsive') !== null ? state.responsive : normalizePreference('responsive', data.settings?.responsive);
       resetFraming();
       $('#engine').value = state.engine; $('#responsive').checked = state.responsive;
       defaults = nextDefaults;
@@ -286,7 +282,7 @@ if (vscode) {
 } else if (path) {
   files.openPath(path).catch((e) => {
     errBox.hidden = false;
-    errBox.textContent = t('Impossibile aprire il file: {error}', { error: e.message });
+    errBox.textContent = t('openFailed', { error: e.message });
     files?.open();
   });
 } else {

@@ -5,7 +5,7 @@ import { rasterize } from './export-image.js';
 const loadPDF = lazyScript(
   new URL('./vendor/jspdf.umd.min.js', import.meta.url).href,
   () => globalThis.jspdf.jsPDF,
-  () => t('Caricamento del modulo PDF non riuscito'),
+  () => t('pdfLoadFailed'),
 );
 
 export async function createPDF(out) {

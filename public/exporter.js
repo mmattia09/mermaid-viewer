@@ -4,7 +4,7 @@ import { renderDiagram } from './renderers.js';
 import { rasterize } from './export-image.js';
 
 /** Export data is captured synchronously, before any rendering or conversion. */
-export function createExporter({ canvas, vscode, getSettings, toast }) {
+export function createExporter({ canvas, vscode, getSettings, toast, render = renderDiagram, toRaster = rasterize }) {
   function capture() {
     const appearance = {};
     const style = getComputedStyle(canvas);
@@ -53,7 +53,7 @@ export function createExporter({ canvas, vscode, getSettings, toast }) {
     if (snapshot.engine === 'pele') return snapshot.svg;
     for (const src of new Set([snapshot.markdown ? prepareMarkdown(snapshot.source) : snapshot.source, snapshot.source])) {
       try {
-        const { svg } = await renderDiagram(src, { engine: 'mermaid', theme: snapshot.theme, palette: snapshot.palette, raster: true });
+        const { svg } = await render(src, { engine: 'mermaid', theme: snapshot.theme, palette: snapshot.palette, raster: true });
         if (/<foreignObject/.test(svg)) continue;
         const host = document.createElement('div');
         host.style.cssText = 'position:fixed;left:-99999px;top:0';
@@ -77,13 +77,13 @@ export function createExporter({ canvas, vscode, getSettings, toast }) {
       reader.onload = () => vscode.postMessage({ type: 'export', ext, data: reader.result.split(',')[1] });
       reader.readAsDataURL(blob); return;
     }
-    const base = (name || t('diagramma')).replace(/\.[^.]+$/, '');
+    const base = (name || t('diagram')).replace(/\.[^.]+$/, '');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${base}.${ext}`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    toast(t('Esportato {file}', { file: `${base}.${ext}` }));
+    toast(t('exported', { file: `${base}.${ext}` }));
   }
 
   function exportSVG(snapshot) {
@@ -93,40 +93,40 @@ export function createExporter({ canvas, vscode, getSettings, toast }) {
 
   async function exportPNG(snapshot, scale) {
     if (!snapshot.svg) return;
-    toast(t('Preparo il PNG…'));
+    toast(t('preparingPNG'));
     try {
       const out = await rasterSource(snapshot);
-      if (!out) throw new Error(t('PNG non disponibile per questo diagramma: usa SVG'));
-      const image = await rasterize(out, scale);
+      if (!out) throw new Error(t('pngUnavailable'));
+      const image = await toRaster(out, scale);
       const blob = await new Promise(resolve => image.toBlob(resolve, 'image/png'));
-      if (!blob) throw new Error(t('Canvas vuoto'));
+      if (!blob) throw new Error(t('emptyCanvas'));
       download(blob, 'png', snapshot.name);
-    } catch (error) { toast(error.message || t('Export PNG non riuscito')); }
+    } catch (error) { toast(error.message || t('pngFailed')); }
   }
 
   let exportingPDF = false;
   async function exportExtensionPDF(snapshot) {
     if (exportingPDF || !snapshot.svg) return;
     exportingPDF = true;
-    toast(t('Preparo il PDF…'));
+    toast(t('preparingPDF'));
     try {
       const out = await rasterSource(snapshot);
-      if (!out) throw new Error(t('PDF non disponibile per queste etichette Mermaid: usa SVG o il motore Pele'));
+      if (!out) throw new Error(t('pdfUnavailable'));
       const { createPDF } = await import('./export-pdf.js');
       download(await createPDF(out), 'pdf', snapshot.name);
-    } catch (error) { toast(error.message || t('Export PDF non riuscito')); }
+    } catch (error) { toast(error.message || t('pdfFailed')); }
     finally { exportingPDF = false; }
   }
 
   /** PDF vettoriale passando dalla stampa del browser (“Salva come PDF”). */
   function exportPDF(snapshot) {
-    if (vscode) { void exportExtensionPDF(snapshot); return; }
+    if (vscode) return exportExtensionPDF(snapshot);
     const out = snapshot.svg;
     if (!out) return;
     const w = window.open('', '_blank');
-    if (!w) { toast(t('Il browser ha bloccato la finestra')); return; }
+    if (!w) { toast(t('popupBlocked')); return; }
     w.document.write(`<!doctype html><html><head><meta charset="utf-8">
-  <title>${t("diagramma")}</title>
+  <title>${t('diagram')}</title>
   <style>
     @page { size: ${Math.ceil(out.w)}px ${Math.ceil(out.h)}px; margin: 0 }
     html,body { margin:0; padding:0 }
@@ -138,8 +138,8 @@ export function createExporter({ canvas, vscode, getSettings, toast }) {
 
   return function exportDiagram(format) {
     const snapshot = capture();
-    if (format === 'svg') exportSVG(snapshot);
-    else if (format === 'pdf') exportPDF(snapshot);
-    else if (/^png@(1|2|4)$/.test(format)) void exportPNG(snapshot, Number(format.split('@')[1]));
+    if (format === 'svg') return exportSVG(snapshot);
+    else if (format === 'pdf') return exportPDF(snapshot);
+    else if (/^png@(1|2|4)$/.test(format)) return exportPNG(snapshot, Number(format.split('@')[1]));
   };
 }

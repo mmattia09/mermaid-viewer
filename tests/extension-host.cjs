@@ -11,7 +11,10 @@ exports.run = async () => {
   assert.ok(extension.packageJSON.contributes.grammars.some(g => g.language === 'mermaid'));
   assert.ok(extension.packageJSON.contributes.languages[0].icon.dark);
   await vscode.window.showTextDocument(doc);
-  await vscode.commands.executeCommand('mermaidViewer.openPreview', doc.uri);
+  await Promise.all([
+    vscode.commands.executeCommand('mermaidViewer.openPreview', doc.uri),
+    vscode.commands.executeCommand('mermaidViewer.openPreview', doc.uri),
+  ]);
   await new Promise(resolve => setTimeout(resolve, 2000));
   const preview = vscode.window.tabGroups.all.flatMap(group => group.tabs).find(tab => tab.input instanceof vscode.TabInputWebview);
   assert.ok(preview, 'Preview opened beside the file');

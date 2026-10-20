@@ -82,7 +82,7 @@ export function createFileBrowser({ stage, storage, setSource, getSource, setLiv
     const box = $('#recents');
     box.replaceChildren();
     if (!list.length) return;
-    box.append(Object.assign(document.createElement('b'), { textContent: t('Recenti') }));
+    box.append(Object.assign(document.createElement('b'), { textContent: t('recent') }));
     for (const p of list) {
       const b = document.createElement('button');
       b.textContent = p.split('/').pop();
@@ -98,7 +98,7 @@ export function createFileBrowser({ stage, storage, setSource, getSource, setLiv
       picker.hidden = true;
     } catch (e) {
       errBox.hidden = false;
-      errBox.textContent = t('Impossibile aprire il file: {error}', { error: e.message });
+      errBox.textContent = t('openFailed', { error: e.message });
     }
   }
 
@@ -152,7 +152,7 @@ export function createFileBrowser({ stage, storage, setSource, getSource, setLiv
 
     if (!d.dirs.length && !d.files.length) {
       listing.append(Object.assign(document.createElement('li'),
-        { className: 'empty', textContent: t('nessun diagramma qui') }));
+        { className: 'empty', textContent: t('noDiagrams') }));
     }
   }
 
@@ -170,6 +170,7 @@ export function createFileBrowser({ stage, storage, setSource, getSource, setLiv
   stage.addEventListener('drop', async (e) => {
     e.preventDefault();
     stage.classList.remove('dragover');
+    openSequence++; // A dropped file supersedes any pending picker request.
     const item = e.dataTransfer.items?.[0];
     if (item?.getAsFileSystemHandle) {
       const h = await item.getAsFileSystemHandle();
