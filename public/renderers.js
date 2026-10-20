@@ -1,7 +1,7 @@
+import { lazyScript } from './async.js';
 import { t } from './i18n.js';
 import { mermaidColors } from './themes.js';
 let pele;
-let mermaid;
 let queue = Promise.resolve();
 let nextId = 0;
 
@@ -12,15 +12,11 @@ export const baseConfig = {
   htmlLabels: true, markdownAutoWrap: true,
 };
 
-function loadMermaid() {
-  return mermaid ??= new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = new URL('./vendor/mermaid.min.js', import.meta.url).href;
-    script.onload = () => resolve(globalThis.mermaid);
-    script.onerror = () => { mermaid = null; script.remove(); reject(new Error(t('Caricamento Mermaid non riuscito'))); };
-    document.head.append(script);
-  });
-}
+const loadMermaid = lazyScript(
+  new URL('./vendor/mermaid.min.js', import.meta.url).href,
+  () => globalThis.mermaid,
+  () => t('Caricamento Mermaid non riuscito'),
+);
 
 export async function renderDiagram(source, { engine = 'pele', responsive = true, width, theme = 'default', palette, raster = false } = {}) {
   if (source.length > 50000) throw new Error(t('Il diagramma supera il limite di 50.000 caratteri'));

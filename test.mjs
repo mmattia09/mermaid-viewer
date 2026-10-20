@@ -12,6 +12,7 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { JSDOM } from 'jsdom';
+import { baseConfig } from './public/renderers.js';
 import { prepareMarkdown } from './public/md-labels.js';
 
 const dom = new JSDOM('<!doctype html><html><body></body></html>');
@@ -39,15 +40,8 @@ dom.window.SVGElement.prototype.getComputedTextLength ??= function () {
 
 const mermaid = (await import('mermaid')).default;
 
-// stessa configurazione di public/app.js
-mermaid.initialize({
-  startOnLoad: false,
-  securityLevel: 'strict',
-  suppressErrorRendering: true,
-  flowchart: { htmlLabels: true, useMaxWidth: false, padding: 18 },
-  htmlLabels: true,
-  markdownAutoWrap: true,
-});
+// Share the production renderer configuration.
+mermaid.initialize(baseConfig);
 
 async function collect(p) {
   const st = await stat(p);

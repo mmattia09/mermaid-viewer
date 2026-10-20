@@ -1,19 +1,12 @@
+import { lazyScript } from './async.js';
 import { t } from './i18n.js';
 import { rasterize } from './export-image.js';
 
-let library;
-function loadPDF() {
-  return library ??= new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = new URL('./vendor/jspdf.umd.min.js', import.meta.url).href;
-    script.onload = () => resolve(globalThis.jspdf.jsPDF);
-    script.onerror = () => {
-      library = null; script.remove();
-      reject(new Error(t('Caricamento del modulo PDF non riuscito')));
-    };
-    document.head.append(script);
-  });
-}
+const loadPDF = lazyScript(
+  new URL('./vendor/jspdf.umd.min.js', import.meta.url).href,
+  () => globalThis.jspdf.jsPDF,
+  () => t('Caricamento del modulo PDF non riuscito'),
+);
 
 export async function createPDF(out) {
   const canvas = await rasterize(out, 2);
