@@ -8,6 +8,7 @@ artifacts/**
 *.vsix
 bun.lock
 server.ts
+server/**
 mmv
 test.mjs
 

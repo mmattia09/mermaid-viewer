@@ -1,60 +1,19 @@
 #!/usr/bin/env bun
 // mermaid-viewer — server Bun: statico, sfoglia i file, watch via SSE.
-import { readdir, readFile, stat, realpath } from 'node:fs/promises';
+import { createFileAccess } from './server/files.ts';
 import { watchFile } from './watch-file.ts';
-import { basename, dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 
 const HERE = dirname(Bun.fileURLToPath(import.meta.url));
 const PUBLIC = join(HERE, 'public');
 const SIGNATURE = 'mermaid-viewer';
-const EXTS = ['.mmd', '.mermaid'];
-
-/** Radici sfogliabili: tutto il resto del filesystem è fuori portata. */
-const ROOTS = [homedir(), '/Volumes', process.cwd()]
-  .map((p) => resolve(p))
-  .filter((p, i, a) => a.indexOf(p) === i);
-
-const inRoots = (p: string) => ROOTS.some((r) => p === r || p.startsWith(r + '/'));
-const isDiagram = (n: string) => EXTS.some((e) => n.toLowerCase().endsWith(e));
+const { openFile, browse } = createFileAccess([homedir(), '/Volumes', process.cwd()]);
 
 const json = (data: unknown, status = 200) =>
   Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 
 /* ---------------------------------------------------------------- handlers */
-
-async function openFile(p: string) {
-  const abs = await realpath(resolve(p));
-  if (!inRoots(abs) || !isDiagram(abs)) throw new Error('file non consentito');
-  const st = await stat(abs);
-  if (!st.isFile()) throw new Error('non è un file');
-  return { path: abs, name: basename(abs), text: await readFile(abs, 'utf8') };
-}
-
-/** Elenco di una cartella: sottocartelle + soli diagrammi, per il selettore. */
-async function browse(p: string) {
-  const abs = await realpath(resolve(p));
-  if (!inRoots(abs)) throw new Error('cartella fuori dalle radici consentite');
-
-  const entries = await readdir(abs, { withFileTypes: true });
-  const dirs: string[] = [];
-  const files: string[] = [];
-  for (const e of entries) {
-    if (e.name.startsWith('.') || e.name === 'node_modules') continue;
-    if (e.isDirectory()) dirs.push(e.name);
-    else if (isDiagram(e.name)) files.push(e.name);
-  }
-
-  const collator = new Intl.Collator('it', { numeric: true });
-  const parent = dirname(abs);
-  return {
-    path: abs,
-    parent: parent !== abs && inRoots(parent) ? parent : null,
-    roots: ROOTS,
-    dirs: dirs.sort(collator.compare),
-    files: files.sort(collator.compare),
-  };
-}
 
 function sse(abs: string) {
   let stop = () => {};
@@ -64,7 +23,7 @@ function sse(abs: string) {
       const send = (chunk: string) => {
         try { controller.enqueue(enc.encode(chunk)); } catch { stop(); }
       };
-      const unwatch = watchFile(abs, (text) => send(`data: ${JSON.stringify({ text })}\n\n`));
+      const unwatch = watchFile(abs, (text) => send(`data: ${JSON.stringify({ text })}\n\n`), () => openFile(abs).then(file => file.text));
       const ka = setInterval(() => send(': ka\n\n'), 25000);
       stop = () => { clearInterval(ka); unwatch(); };
     },
@@ -107,7 +66,7 @@ function routes(req: Request) {
 
   // senza path si parte dalla prima radice
   if (p === '/api/browse') {
-    return browse(arg || ROOTS[0]).then(json).catch((e) => json({ error: e.message }, 404));
+    return browse(arg || homedir()).then(json).catch((e) => json({ error: e.message }, 404));
   }
 
   if (p === '/api/watch') {

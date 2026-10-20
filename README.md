@@ -164,7 +164,8 @@ and displays the error as text. Source length is limited to 50,000 characters.
 bun install --frozen-lockfile
 bun run test                # renderers, watcher, server, grammar, localization and Mermaid fixtures
 bun run test:extension      # tests in the installed VS Code Extension Host
-bun run package:extension   # creates artifacts/mermaid-viewer.vsix
+bun run check:vendor        # verify vendored assets against installed packages
+bun run package:extension   # verify assets and create artifacts/mermaid-viewer.vsix
 ```
 
 On macOS, `test:extension` uses `/Applications/Visual Studio Code.app`. On other
@@ -182,19 +183,27 @@ node test.mjs path/to/folder # Mermaid regression checks on your own files
 bun run vendor              # regenerate local assets from lockfile versions
 ```
 
-The frontend is plain JavaScript. `public/renderers.js` isolates the engines and
+The frontend is plain JavaScript. `public/app.js` coordinates the UI;
+`viewport.js` owns pan, zoom and resize behavior; `file-browser.js` owns browser
+file access; `exporter.js` captures immutable export inputs; `preferences.js`
+validates persisted settings. `async.js` coalesces superseded preview requests
+and shares retryable library loads. `public/renderers.js` isolates the engines and
 serializes Mermaid, whose configuration is global. Outdated render results are
-ignored. `public/i18n.js` handles locale selection and static UI bindings;
+ignored. `public/i18n.js` handles locale selection and explicit `data-i18n` bindings;
 `public/translations.js` contains the frontend dictionaries. VS Code contributions
 use `package.nls*.json`, and host messages use `extension/locales.json`.
 
-`watch-file.ts` shares one watcher per path across tabs. It watches the directory
+`watch-file.ts` shares one poller per path across tabs and one native watcher per directory. It watches the directory
 to handle atomic saves and compares contents every 500 ms, including on network
-filesystems. `extension/extension.cjs` hosts the same frontend using local resources,
+filesystems. `extension/extension.cjs` registers commands; `panel-registry.cjs` prevents duplicate
+concurrent previews, `preview-panel.cjs` owns panel subscriptions, and
+`webview-html.cjs` constructs the host HTML. The extension hosts the same frontend using local resources,
 CSP, and message transport instead of HTTP/SSE.
 
 Renderers are vendored for offline use without a build. Their licenses are under
-`public/vendor`. The VSIX includes ready-to-use assets.
+`public/vendor`. The VSIX includes ready-to-use assets and a reproducible SHA-256 vendor manifest.
+See the [dependency review](docs/dependencies.md) for pinned versions, audit results,
+and the distinction between installed packages and embedded bundle dependencies.
 
 ## License
 

@@ -11,24 +11,26 @@
     "start": "bun server.ts",
     "vendor": "node scripts/vendor.mjs",
     "test": "bun test tests/*.test.js && node test.mjs tests/fixtures",
-    "package:extension": "mkdir -p artifacts && vsce package --no-dependencies --out artifacts/mermaid-viewer.vsix",
-    "test:extension": "node scripts/test-extension.mjs"
+    "package:extension": "bun run check:vendor && mkdir -p artifacts && vsce package --no-dependencies --out artifacts/mermaid-viewer.vsix",
+    "test:extension": "node scripts/test-extension.mjs",
+    "check:vendor": "node scripts/vendor.mjs --check"
   },
   "devDependencies": {
-    "@vscode/vsce": "^4.0.0",
-    "jsdom": "^29.1.1",
-    "jspdf": "^4.2.1",
-    "mermaid": "^11.0.0",
+    "@vscode/vsce": "4.0.0",
+    "jsdom": "29.1.1",
+    "jspdf": "4.2.1",
+    "mermaid": "11.16.1",
     "pele": "1.6.0",
-    "vscode-oniguruma": "^2.0.1",
-    "vscode-textmate": "^9.3.2"
+    "vscode-oniguruma": "2.0.1",
+    "vscode-textmate": "9.3.2"
   },
   "displayName": "Mermaid Viewer — Pele & Mermaid",
   "publisher": "mmattia09",
   "license": "MIT",
   "main": "./extension/extension.cjs",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.85.0",
+    "node": "^22.13.0 || >=24.0.0"
   },
   "categories": [
     "Visualization"
@@ -113,5 +115,10 @@
         "path": "./syntaxes/mermaid.tmLanguage.json"
       }
     ]
+  },
+  "overrides": {
+    "undici": "7.29.1",
+    "source-map-js": "1.2.2",
+    "dompurify": "3.4.17"
   }
 }
